@@ -1,8 +1,20 @@
 #include "PlayerControlled.h"
 #include <SFML/Window/Keyboard.hpp> // Required for keyboard polling in SFML 3.0
 
+// PlayerControlled::PlayerControlled(float x, float y, const EntityStats& baseStats)
+//     : Entity(x, y, baseStats) {
+// }
 PlayerControlled::PlayerControlled(float x, float y, const EntityStats& baseStats)
     : Entity(x, y, baseStats) {
+
+    // --- TEMPORARY VISUAL FIX FOR MVP TESTING ---
+    // Creates a 32x32 pixel white square in memory and loads it into our texture
+    sf::Image tempImage({32, 32}, sf::Color::White);
+    texture.loadFromImage(tempImage);
+
+    sprite.setTextureRect({{0, 0}, {32, 32}});
+
+    sprite.setOrigin({16.f, 16.f});
 }
 
 void PlayerControlled::handleInput() {

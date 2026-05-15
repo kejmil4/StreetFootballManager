@@ -26,6 +26,13 @@ add_executable(StreetFootballManager
         src/Entities/Entity.h
         src/Entities/PlayerControlled.cpp
         src/Entities/PlayerControlled.h
+        src/States/MatchState.cpp
+        src/States/MatchState.h
+        src/Entities/Ball.cpp
+        src/Entities/Ball.h
+        src/Entities/Pitch.cpp
+        src/Entities/Pitch.h
+        src/Core/Config.h
 )
 
 target_link_libraries(StreetFootballManager PRIVATE

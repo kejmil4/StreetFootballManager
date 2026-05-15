@@ -15,6 +15,7 @@ protected:
     sf::Vector2f velocity;
     EntityStats stats;
     float currentStamina;
+    bool hasPossession = false;
 
     void applyMovement(float dt);
 
@@ -29,4 +30,7 @@ public:
 
     float getStamina() const;
     const EntityStats& getStats() const;
+
+    bool getPossession() const;
+    void setPossession(bool state);
 };
