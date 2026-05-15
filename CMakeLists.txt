@@ -33,6 +33,10 @@ add_executable(StreetFootballManager
         src/Entities/Pitch.cpp
         src/Entities/Pitch.h
         src/Core/Config.h
+        src/Entities/AIControlled.cpp
+        src/Entities/AIControlled.h
+        src/UI/HUD.cpp
+        src/UI/HUD.h
 )
 
 target_link_libraries(StreetFootballManager PRIVATE

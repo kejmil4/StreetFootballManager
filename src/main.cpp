@@ -1,12 +1,13 @@
 #include "Core/Game.h"
 #include <iostream>
+#include <ctime>
+#include <cstdlib>
 
 int main() {
+    std::srand(static_cast<unsigned>(std::time(nullptr)));
     try {
-        // Instantiate our engine
         Game game;
 
-        // Start the infinite loop
         game.run();
     }
     catch (const std::exception& e) {

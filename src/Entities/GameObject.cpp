@@ -11,3 +11,8 @@ sf::Vector2f GameObject::getPosition() const {
 sf::FloatRect GameObject::getBounds() const {
     return sprite.getGlobalBounds();
 }
+
+void GameObject::resetPosition(float x, float y) {
+    position = {x, y};
+    sprite.setPosition(position);
+}

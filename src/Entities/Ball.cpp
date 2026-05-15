@@ -52,15 +52,31 @@ void Ball::update(float dt) {
     }
 
     // --- WALL COLLISION (X and Y Axes) ---
-    float ballMargin = 8.f; // The radius of our temporary red square
+    float ballMargin = 8.f;
+
+    bool underCrossbar = (position3D.z < 120.f);
+
+    bool inGoalArea = (position3D.y > Config::GOAL_TOP_Y && position3D.y < Config::GOAL_BOTTOM_Y) && underCrossbar;
 
     // X-Axis (Left and Right Walls)
     if (position3D.x <= ballMargin) {
-        position3D.x = ballMargin;
-        velocity3D.x = -velocity3D.x * bounceFactor; // Reverse direction & lose speed
+        if (!inGoalArea) { // Bounce off the wall
+            position3D.x = ballMargin;
+            velocity3D.x = -velocity3D.x * bounceFactor;
+        } else if (position3D.x <= -40.f) {
+            // THE LEFT NET: Catch the ball so it doesn't roll forever
+            position3D.x = -40.f;
+            velocity3D.x = 0.f;
+        }
     } else if (position3D.x >= Config::WINDOW_WIDTH - ballMargin) {
-        position3D.x = Config::WINDOW_WIDTH - ballMargin;
-        velocity3D.x = -velocity3D.x * bounceFactor;
+        if (!inGoalArea) { // Bounce off the wall
+            position3D.x = Config::WINDOW_WIDTH - ballMargin;
+            velocity3D.x = -velocity3D.x * bounceFactor;
+        } else if (position3D.x >= Config::WINDOW_WIDTH + 40.f) {
+            // THE RIGHT NET: Catch the ball
+            position3D.x = Config::WINDOW_WIDTH + 40.f;
+            velocity3D.x = 0.f;
+        }
     }
 
     // Y-Axis (Top and Bottom Walls)
@@ -115,4 +131,11 @@ void Ball::snapToPlayer(sf::Vector2f playerPos) {
 
 bool Ball::isGrounded() const {
     return position3D.z <= 0.f;
+}
+
+void Ball::resetPosition(float x, float y) {
+    GameObject::resetPosition(x, y);
+
+    position3D = {x, y, 0.f};
+    velocity3D = {0.f, 0.f, 0.f};
 }

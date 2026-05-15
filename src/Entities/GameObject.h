@@ -13,7 +13,9 @@ public:
 
     virtual void update(float dt) = 0; 
 
-    virtual void render(sf::RenderTarget& target) = 0; 
+    virtual void render(sf::RenderTarget& target) = 0;
+
+    virtual void resetPosition(float x, float y);
 
     sf::Vector2f getPosition() const;
     sf::FloatRect getBounds() const;

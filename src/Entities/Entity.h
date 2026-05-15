@@ -1,7 +1,11 @@
 #pragma once
 #include "GameObject.h"
 
-// A clean way to group all RPG-style stats together
+enum class Team {
+    Home,
+    Away
+};
+
 struct EntityStats {
     float speed;
     float shooting;
@@ -16,6 +20,9 @@ protected:
     EntityStats stats;
     float currentStamina;
     bool hasPossession = false;
+    float tackleCooldown = 0.f;
+    float stunTimer = 0.f;
+    Team team;
 
     void applyMovement(float dt);
 
@@ -33,4 +40,14 @@ public:
 
     bool getPossession() const;
     void setPossession(bool state);
+
+    bool canTackle() const;
+    void resetTackleCooldown();
+    void updateCooldowns(float dt);
+
+    void stun(float duration);
+    bool isStunned() const;
+
+    Team getTeam() const;
+    void setTeam(Team t);
 };

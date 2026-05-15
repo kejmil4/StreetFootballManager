@@ -23,6 +23,8 @@ public:
     void update(float dt) override;
     void render(sf::RenderTarget& target) override;
 
+    void resetPosition(float x, float y) override;
+
     // A custom function to apply force to the ball
     void kick(sf::Vector3f force);
 
