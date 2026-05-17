@@ -3,15 +3,15 @@
 #include "../Entities/GameObject.h"
 #include "../Entities/Entity.h"
 #include "../Entities/Ball.h"
-#include "../Entities/PlayerControlled.h"
+#include "../Entities/Footballer.h"
 #include "../UI/HUD.h"
 #include <vector>
 #include <memory>
+#include <SFML/Graphics/Text.hpp>
+#include <SFML/Graphics/Font.hpp>
 
 class MatchState : public GameState {
 private:
-    // THE SINGLE CONTAINER RULE
-    // This holds Players, AI, the Ball, and the Pitch all in one place!
     std::vector<std::unique_ptr<GameObject>> gameObjects;
 
     HUD matchHUD;
@@ -20,13 +20,26 @@ private:
 
     int homeScore = 0;
     int awayScore = 0;
+
     void checkPossession();
     void checkGoals();
     void executeAIAutoTackles();
-    void handlePlayerShooting(PlayerControlled* activePlayer);
-    void handlePlayerTackling(PlayerControlled* activePlayer);
-    void handlePlayerPassing(PlayerControlled* activePlayer);
+
+    void handlePlayerShooting(Footballer* activePlayer);
+    void handlePlayerTackling(Footballer* activePlayer);
+    void handlePlayerPassing(Footballer* activePlayer);
+    void switchHumanControl(Footballer* human);
     void resetPitch();
+
+    float aiReactionTimer = 0.f;
+    void handleAIPossession(Footballer* aiCarrier);
+
+    bool isPaused = false;
+    float matchDuration = 180.f;
+    float timeRemaining;
+
+    sf::Font pauseFont;
+    sf::Text pauseText;
 
 public:
     MatchState();

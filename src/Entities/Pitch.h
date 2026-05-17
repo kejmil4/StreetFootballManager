@@ -2,6 +2,9 @@
 #include "GameObject.h"
 
 class Pitch : public GameObject {
+private:
+    sf::Texture texture;
+    sf::Sprite sprite;
 public:
     Pitch();
     ~Pitch() override = default;

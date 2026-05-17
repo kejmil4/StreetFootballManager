@@ -16,6 +16,12 @@ private:
     // The shadow to sell the fake 3D effect
     sf::CircleShape shadow;
 
+    sf::Texture ballTex;
+    sf::Sprite ballSprite;
+
+    sf::Texture shadowTex;
+    sf::Sprite shadowSprite;
+
 public:
     Ball(float x, float y);
     ~Ball() override = default;

@@ -3,7 +3,9 @@
 #include <algorithm>
 
 Entity::Entity(float x, float y, const EntityStats& baseStats)
-    : GameObject(x, y), stats(baseStats), currentStamina(baseStats.maxStamina), velocity({0.f, 0.f}) {
+: GameObject(x, y), stats(baseStats), currentStamina(baseStats.maxStamina), velocity({0.f, 0.f}), hasPossession(false),
+  tackleCooldown(0.f),
+  stunTimer(0.f) {
 }
 
 void Entity::render(sf::RenderTarget& target) {
@@ -16,30 +18,38 @@ void Entity::applyMovement(float dt) {
     bool isMoving = (velocity.x != 0.f || velocity.y != 0.f);
 
     if (isMoving) {
-        // Drain stamina (e.g., 25 points per second, takes 4 seconds to exhaust)
         currentStamina -= 25.f * dt;
         if (currentStamina < 0.f) currentStamina = 0.f;
     } else {
-        // Regenerate stamina when standing still (e.g., 15 points per second)
-        currentStamina += 15.f * dt;
+        currentStamina += 50.f * dt;
         if (currentStamina > stats.maxStamina) currentStamina = stats.maxStamina;
     }
 
-    // Calculate our speed penalty.
-    // At 100% stamina, multiplier is 1.0. At 0% stamina, it drops to 0.5 (half speed).
+
     float staminaRatio = currentStamina / stats.maxStamina;
     float speedMultiplier = 0.5f + (0.5f * staminaRatio);
 
-    // Apply the penalty to the velocity before we move!
     sf::Vector2f actualVelocity = velocity * speedMultiplier;
 
     // 2. --- ACTUAL MOVEMENT ---
     position += actualVelocity * dt;
 
-    // 3. --- BOUNDARY CLAMPING ---
-    float margin = 16.f;
-    position.x = std::clamp(position.x, margin, Config::WINDOW_WIDTH - margin);
-    position.y = std::clamp(position.y, margin, Config::WINDOW_HEIGHT - margin);
+    // --- INVISIBLE WALL
+    // X-Axis (Left and Right walls)
+    if (position.x < Config::PITCH_LEFT_X) {
+        position.x = Config::PITCH_LEFT_X;
+    }
+    else if (position.x > Config::PITCH_RIGHT_X) {
+        position.x = Config::PITCH_RIGHT_X;
+    }
+
+    // Y-Axis (Top and Bottom walls)
+    if (position.y < Config::PITCH_TOP_Y) {
+        position.y = Config::PITCH_TOP_Y;
+    }
+    else if (position.y > Config::PITCH_BOTTOM_Y) {
+        position.y = Config::PITCH_BOTTOM_Y;
+    }
 
     sprite.setPosition(position);
 

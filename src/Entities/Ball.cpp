@@ -2,6 +2,7 @@
 #include "../Core/Config.h"
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 
 Ball::Ball(float x, float y)
     : GameObject(x, y),
@@ -9,19 +10,26 @@ Ball::Ball(float x, float y)
       velocity3D({0.f, 0.f, 0.f}),
       gravity(800.f),       // Pulls the ball down 800 pixels per second squared
       bounceFactor(0.6f),   // Retains 60% of its Z-velocity on bounce
-      friction(0.98f)       // Loses 2% of X/Y velocity per frame when rolling
+      friction(0.98f),       // Loses 2% of X/Y velocity per frame when rolling
+      ballSprite(ballTex),
+      shadowSprite(shadowTex)
 {
-    // --- TEMPORARY VISUAL: Red Square for the Ball ---
-    sf::Image tempImage({16, 16}, sf::Color::Red);
-    texture.loadFromImage(tempImage);
-    sprite.setTextureRect({{0, 0}, {16, 16}});
-    sprite.setOrigin({8.f, 8.f});
 
-    // --- THE SHADOW ---
-    shadow.setRadius(8.f);
-    shadow.setOrigin({8.f, 8.f});
-    shadow.setScale({1.0f, 0.5f}); // Flatten the circle into an oval
-    shadow.setFillColor(sf::Color(0, 0, 0, 100)); // Semi-transparent black
+    if (!ballTex.loadFromFile("assets/ball.png")) {
+        std::cerr << "FAILED TO LOAD: assets/ball.png\n";
+    }
+    ballSprite.setTexture(ballTex, true);
+    ballSprite.setOrigin({16.f, 16.f});
+    ballSprite.setScale({2.f, 2.f});
+
+    if (!shadowTex.loadFromFile("assets/ballShadow.png")) {
+        std::cerr << "FAILED TO LOAD: assets/ballShadow.png\n";
+    }
+    shadowSprite.setTexture(shadowTex, true);
+    shadowSprite.setOrigin({16.f, 16.f});
+    shadowSprite.setColor(sf::Color(255, 255, 255, 120));
+    shadowSprite.setScale({2.f, 2.f});
+
 }
 
 void Ball::update(float dt) {
@@ -51,65 +59,49 @@ void Ball::update(float dt) {
         if (std::abs(velocity3D.y) < 5.f) velocity3D.y = 0.f;
     }
 
-    // --- WALL COLLISION (X and Y Axes) ---
-    float ballMargin = 8.f;
+    // --- NEW BOUNDARY LOGIC ---
+    float leftWall = Config::PITCH_LEFT_X;
+    float rightWall = Config::PITCH_RIGHT_X;
 
-    bool underCrossbar = (position3D.z < 120.f);
+    // If the ball is vertically between the goal posts, open the physical walls!
+    bool inGoalY = (position3D.y > Config::GOAL_TOP_Y && position3D.y < Config::GOAL_BOTTOM_Y);
+    if (inGoalY) {
+        leftWall = 10.f;  // The back of the left net
+        rightWall = Config::WINDOW_WIDTH - 10.f; // The back of the right net
+    }
 
-    bool inGoalArea = (position3D.y > Config::GOAL_TOP_Y && position3D.y < Config::GOAL_BOTTOM_Y) && underCrossbar;
+    float ballMargin = 16.f; // The visual radius of the ball
 
-    // X-Axis (Left and Right Walls)
-    if (position3D.x <= ballMargin) {
-        if (!inGoalArea) { // Bounce off the wall
-            position3D.x = ballMargin;
-            velocity3D.x = -velocity3D.x * bounceFactor;
-        } else if (position3D.x <= -40.f) {
-            // THE LEFT NET: Catch the ball so it doesn't roll forever
-            position3D.x = -40.f;
-            velocity3D.x = 0.f;
-        }
-    } else if (position3D.x >= Config::WINDOW_WIDTH - ballMargin) {
-        if (!inGoalArea) { // Bounce off the wall
-            position3D.x = Config::WINDOW_WIDTH - ballMargin;
-            velocity3D.x = -velocity3D.x * bounceFactor;
-        } else if (position3D.x >= Config::WINDOW_WIDTH + 40.f) {
-            // THE RIGHT NET: Catch the ball
-            position3D.x = Config::WINDOW_WIDTH + 40.f;
-            velocity3D.x = 0.f;
-        }
+    // X-Axis
+    if (position3D.x <= leftWall + ballMargin) {
+        position3D.x = leftWall + ballMargin;
+        velocity3D.x = -velocity3D.x * bounceFactor;
+    } else if (position3D.x >= rightWall - ballMargin) {
+        position3D.x = rightWall - ballMargin;
+        velocity3D.x = -velocity3D.x * bounceFactor;
     }
 
     // Y-Axis (Top and Bottom Walls)
-    if (position3D.y <= ballMargin) {
-        position3D.y = ballMargin;
+    if (position3D.y <= Config::PITCH_TOP_Y + ballMargin) {
+        position3D.y = Config::PITCH_TOP_Y + ballMargin;
         velocity3D.y = -velocity3D.y * bounceFactor;
-    } else if (position3D.y >= Config::WINDOW_HEIGHT - ballMargin) {
-        position3D.y = Config::WINDOW_HEIGHT - ballMargin;
+    } else if (position3D.y >= Config::PITCH_BOTTOM_Y - ballMargin) {
+        position3D.y = Config::PITCH_BOTTOM_Y - ballMargin;
         velocity3D.y = -velocity3D.y * bounceFactor;
     }
+
     position = {position3D.x, position3D.y};
-
-    // --- FAKE 3D VISUALS ---
-
-    // Shadow stays strictly on the 2D ground
-    shadow.setPosition({position3D.x, position3D.y});
-
-    // Ball Sprite moves UP the screen based on Z height
-    sprite.setPosition({position3D.x, position3D.y - position3D.z});
-
-    // Scale ball UP as it gets higher
-    float ballScale = 1.0f + (position3D.z / 300.f);
-    sprite.setScale({ballScale, ballScale});
-
-    // Scale shadow DOWN (fade away) as ball gets higher
-    float shadowScale = std::max(0.2f, 1.0f - (position3D.z / 300.f));
-    shadow.setScale({shadowScale, shadowScale * 0.5f}); // keep oval shape
 }
 
+
 void Ball::render(sf::RenderTarget& target) {
-    // Draw shadow FIRST so it is under the ball
-    target.draw(shadow);
-    target.draw(sprite);
+    // 1. Draw the shadow glued to the ground (Y axis)
+    shadowSprite.setPosition({position3D.x, position3D.y});
+    target.draw(shadowSprite);
+
+    // 2. Draw the ball floating in the air based on height (Y minus Z axis!)
+    ballSprite.setPosition({position3D.x, position3D.y - position3D.z});
+    target.draw(ballSprite);
 }
 
 
@@ -121,9 +113,9 @@ void Ball::snapToPlayer(sf::Vector2f playerPos) {
     // Kill all momentum
     velocity3D = {0.f, 0.f, 0.f};
 
-    // Snap X/Y strictly to the player's feet (slightly to the right of their center)
-    position3D.x = playerPos.x + 15.f;
-    position3D.y = playerPos.y + 10.f;
+    // FIX: Trust the exact coordinates provided by MatchState!
+    position3D.x = playerPos.x;
+    position3D.y = playerPos.y;
     position3D.z = 0.f; // Force it to the ground
 
     position = {position3D.x, position3D.y};
