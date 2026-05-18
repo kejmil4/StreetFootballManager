@@ -42,7 +42,7 @@ private:
     sf::Text pauseText;
 
 public:
-    MatchState();
+    MatchState(Game* game);
     ~MatchState() override = default;
 
     void handleInput(const sf::Event& event) override;

@@ -1,8 +1,14 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 
+class Game;
+
 class GameState {
+protected:
+    Game* game;
+
 public:
+    GameState(Game* gameEngine) : game(gameEngine) {}
     virtual ~GameState() = default;
 
     virtual void handleInput(const sf::Event& event) = 0;

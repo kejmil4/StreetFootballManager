@@ -35,6 +35,8 @@ add_executable(StreetFootballManager
         src/UI/HUD.h
         src/Entities/Footballer.cpp
         src/Entities/Footballer.h
+        src/States/MenuState.cpp
+        src/States/MenuState.h
 )
 
 target_link_libraries(StreetFootballManager PRIVATE

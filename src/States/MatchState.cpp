@@ -8,7 +8,7 @@
 #include <cstdlib>
 #include <algorithm>
 
-MatchState::MatchState() : timeRemaining(matchDuration), pauseText(pauseFont) {
+MatchState::MatchState(Game* game) : GameState(game),timeRemaining(matchDuration), pauseText(pauseFont) {
     gameObjects.push_back(std::make_unique<Pitch>());
 
     // Spawn the Ball

@@ -1,14 +1,18 @@
 #include "Game.h"
 #include "../States/MatchState.h"
 #include "Config.h"
+#include "../States/MenuState.h"
 
 Game::Game() {
-    // SFML 3.0 VideoMode constructor and state enum
     window.create(sf::VideoMode({Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT}), "Street Football Manager", sf::Style::Default);
     window.setFramerateLimit(60);
 
-    currentState = std::make_unique<MatchState>();
+    currentState = std::make_unique<MenuState>(this);
 
+}
+
+void Game::changeState(std::unique_ptr<GameState> newState) {
+    nextState = std::move(newState);
 }
 
 Game::~Game() = default;
@@ -39,7 +43,10 @@ void Game::processEvents() {
 }
 
 void Game::update(float dt) {
-    // ADD THIS: Tell the current state to update all its objects
+    if (nextState) {
+        currentState = std::move(nextState);
+    }
+
     if (currentState) {
         currentState->update(dt);
     }
@@ -48,10 +55,13 @@ void Game::update(float dt) {
 void Game::render() {
     window.clear(sf::Color::Black);
 
-    // ADD THIS: Tell the current state to draw all its objects to the window
     if (currentState) {
         currentState->render(window);
     }
 
     window.display();
+}
+
+void Game::closeApplication() {
+    window.close();
 }
