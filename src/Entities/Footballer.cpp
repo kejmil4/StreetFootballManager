@@ -1,80 +1,51 @@
 #include "Footballer.h"
+#include "../AI/AIBrain.h" // Include the brain so we can use it!
 #include "../Core/Config.h"
 #include <SFML/Window/Keyboard.hpp>
+#include "../Visuals/FootballerAnimator.h"
+#include "../Controllers/HumanController.h"
 #include <cmath>
 #include <iostream>
 
-// --- HELPER FUNCTION: DYNAMIC PALETTE SWAPPER ---
-sf::Texture loadCustomKit(const std::string& filepath, sf::Color jerseyColor, sf::Color shortsColor, sf::Color hairColor) {
-    sf::Image image;
-    if (!image.loadFromFile(filepath)) {
-        std::cerr << "Failed to load player sprite sheet!\n";
-    }
-
-    for (unsigned int y = 0; y < image.getSize().y; ++y) {
-        for (unsigned int x = 0; x < image.getSize().x; ++x) {
-            sf::Color pixelColor = image.getPixel({x, y});
-
-            if (pixelColor == sf::Color::Red || pixelColor == sf::Color::Green) {
-                // Swap Neon Green (and any accidental red) to the Jersey Color
-                image.setPixel({x, y}, jerseyColor);
-            }
-            else if (pixelColor == sf::Color::Blue) {
-                // Swap Neon Blue to Shorts Color
-                image.setPixel({x, y}, shortsColor);
-            }
-            else if (pixelColor == sf::Color::Magenta) {
-                // Swap Neon Magenta to Hair Color
-                image.setPixel({x, y}, hairColor);
-            }
-        }
-    }
-
-    sf::Texture tex;
-    tex.loadFromImage(image);
-    return tex;
-}
+// ==========================================
+// FOOTBALLER LOGIC
+// ==========================================
 
 Footballer::Footballer(float x, float y, const EntityStats& baseStats, Ball* ball, Team teamAlignment, const std::vector<std::unique_ptr<GameObject>>* env, bool startsAsHuman)
-    : Entity(x, y, baseStats), targetBall(ball), environment(env), isHuman(startsAsHuman), currentState(AIBrainState::ChasingLoose) {
+    : Entity(x, y, baseStats), targetBall(ball), environment(env), isHuman(startsAsHuman), targetPos(x, y), startPosition(x, y) {
 
     setTeam(teamAlignment);
 
-    // 1. Pick team colors
-    sf::Color jersey, shorts, hair;
-    hair = sf::Color(220, 180, 90); // Default Blonde for now (we can randomize later!)
+    brain = std::make_unique<AIBrain>(this, targetBall, environment);
+    humanInput = std::make_unique<HumanController>(this, environment, targetBall);
 
-    if (teamAlignment == Team::Home) {
-        jersey = sf::Color::White;
-        shorts = sf::Color::Blue;
-    } else {
-        jersey = sf::Color::Red;
-        shorts = sf::Color::Black;
-    }
-
-    // 2. Load the sprite sheet using our palette swapper!
-    // IMPORTANT: Make sure this path points to where you saved footballer4frames.png
-    this->texture = loadCustomKit("assets/footballer4frames.png", jersey, shorts, hair);
-
-    sprite.setTexture(this->texture);
-    sprite.setTextureRect({{0, 0}, {32, 32}});
-
-    // Center the origin so flipping the sprite works perfectly!
-    sprite.setOrigin({16.f, 16.f});
+    animator = std::make_unique<FootballerAnimator>(sprite, teamAlignment);
 }
+
+Footballer::~Footballer() = default;
 
 void Footballer::makeHuman() {
     isHuman = true;
-    sprite.setColor(sf::Color::White); // Visually pop so you know who you are!
 }
 
 void Footballer::makeAI() {
     isHuman = false;
-    sprite.setColor(sf::Color(150, 150, 150)); // Fade back to teammate color
+}
+
+void Footballer::kickBall(sf::Vector3f power) {
+    if (targetBall && getPossession()) {
+        targetBall->kick(power);
+        setPossession(false);
+
+        possessionCooldown = 0.3f;
+    }
 }
 
 void Footballer::update(float dt) {
     updateCooldowns(dt);
+
+    if (possessionCooldown > 0.f) possessionCooldown -= dt;
+
     if (isStunned()) {
         velocity = {0.f, 0.f};
         return;
@@ -83,138 +54,14 @@ void Footballer::update(float dt) {
     velocity = {0.f, 0.f};
 
     // ==========================================
-    // HUMAN CONTROL LOGIC
+    // 1. INPUT & DECISION MAKING
     // ==========================================
     if (isHuman) {
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W)) velocity.y -= stats.speed;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S)) velocity.y += stats.speed;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) velocity.x -= stats.speed;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) velocity.x += stats.speed;
-
-        // Diagonal normalization
-        if (velocity.x != 0.f && velocity.y != 0.f) {
-            float length = std::hypot(velocity.x, velocity.y);
-            velocity.x = (velocity.x / length) * stats.speed;
-            velocity.y = (velocity.y / length) * stats.speed;
-        }
+        humanInput->update(dt);
     }
-    // ==========================================
-    // AI CONTROL LOGIC
-    // ==========================================
     else {
-        // --- 1. DETERMINE STATE ---
-        currentState = AIBrainState::ChasingLoose;
-        if (environment) {
-            for (const auto& obj : *environment) {
-                if (auto entity = dynamic_cast<Entity*>(obj.get())) {
-                    if (entity->getPossession()) {
-                        if (entity == this) {
-                            currentState = AIBrainState::OnBallOffense;
-                        }
-                        else if (entity->getTeam() == this->getTeam()) {
-                            currentState = AIBrainState::OffBallOffense;
-                        }
-                        else {
-                            currentState = AIBrainState::Defending;
-                        }
-                        break;
-                    }
-                }
-            }
-        }
+        brain->update(dt);
 
-        // --- 2. EXECUTE STATE LOGIC ---
-        sf::Vector2f targetPos = position;
-        bool ignoreFlocking = false; // ADD THIS: Lets the chaser grab the ball without bouncing off friends!
-
-        switch (currentState) {
-            case AIBrainState::ChasingLoose:
-            case AIBrainState::Defending: {
-                if (targetBall) {
-                    // 1. Am I the closest player on my team to the ball?
-                    bool amIClosest = true;
-                    float myDist = std::hypot(targetBall->getPosition().x - position.x, targetBall->getPosition().y - position.y);
-
-                    if (environment) {
-                        for (const auto& obj : *environment) {
-                            if (auto ally = dynamic_cast<Footballer*>(obj.get())) {
-                                if (ally != this && ally->getTeam() == this->getTeam()) {
-                                    float allyDist = std::hypot(targetBall->getPosition().x - ally->getPosition().x,
-                                                                targetBall->getPosition().y - ally->getPosition().y);
-                                    if (allyDist < myDist) {
-                                        amIClosest = false;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // 2. Execute dynamic context-aware behavior
-                    if (amIClosest) {
-                        // PRIMARY CHASER: Run straight at the ball!
-                        targetPos = targetBall->getPosition();
-                        ignoreFlocking = true;
-                    } else {
-                        // SUPPORT PLAYER: Where is the ball on the pitch?
-                        float ballX = targetBall->getPosition().x;
-                        float ownGoalX = (getTeam() == Team::Home) ? 0.f : Config::WINDOW_WIDTH;
-                        float distToOwnGoal = std::abs(ballX - ownGoalX);
-
-                        // --- ZONE A: DEFENSIVE EMERGENCY (Ball is within 500px of our own goal) ---
-                        if (distToOwnGoal < 500.f) {
-                            // Don't drop back! Instead, fan out into a passing lane slightly ahead of the ball
-                            float forwardDirection = (getTeam() == Team::Home) ? 120.f : -120.f;
-                            targetPos.x = ballX + forwardDirection;
-
-                            // Alternate lanes on the Y-axis so teammates don't stack up
-                            targetPos.y = targetBall->getPosition().y + ((position.y > targetBall->getPosition().y) ? 150.f : -150.f);
-                        }
-                        // --- ZONE B: ATTACKING OVERLAP (Ball is within 500px of opponent's goal) ---
-                        else if (std::abs(ballX - (Config::WINDOW_WIDTH - ownGoalX)) < 500.f) {
-                            // Make an overlapping offensive run deep into the opponent's corners!
-                            float enemyGoalX = (getTeam() == Team::Home) ? Config::WINDOW_WIDTH : 0.f;
-                            targetPos.x = enemyGoalX - ((getTeam() == Team::Home) ? 50.f : -50.f);
-                            targetPos.y = (position.y < Config::CENTER_Y) ? Config::GOAL_TOP_Y - 100.f : Config::GOAL_BOTTOM_Y + 100.f;
-                        }
-                        // --- ZONE C: MIDFIELD TRANSITION (Standard containment) ---
-                        else {
-                            if (currentState == AIBrainState::Defending) {
-                                // FIX: Anchor their retreat relative to the BALL, not themselves!
-                                // Stay 150 pixels behind the ball to act as a containing sweeper line
-                                float defensiveBuffer = (getTeam() == Team::Home) ? -150.f : 150.f;
-                                targetPos.x = ballX + defensiveBuffer;
-
-                                // Maintain their current lane on the Y axis so they don't bunch up
-                                targetPos.y = position.y;
-                            } else {
-                                // Ball is loose in midfield, stay stationary and hold your ground
-                                targetPos = position;
-                            }
-                        }
-                    }
-                }
-                break;
-            }
-
-            case AIBrainState::OnBallOffense: {
-                float enemyGoalX = (getTeam() == Team::Home) ? Config::WINDOW_WIDTH : 0.f;
-                targetPos.x = enemyGoalX;
-                targetPos.y = Config::CENTER_Y;
-                break;
-            }
-
-            case AIBrainState::OffBallOffense: {
-                float enemyGoalX = (getTeam() == Team::Home) ? Config::WINDOW_WIDTH : 0.f;
-                targetPos.x = position.x + ((getTeam() == Team::Home) ? 200.f : -200.f);
-                if (targetPos.x > Config::WINDOW_WIDTH - 200.f) targetPos.x = Config::WINDOW_WIDTH - 200.f;
-                if (targetPos.x < 200.f) targetPos.x = 200.f;
-                targetPos.y = position.y;
-                break;
-            }
-        }
-
-        // --- 3. MOVEMENT ---
         float dx = targetPos.x - position.x;
         float dy = targetPos.y - position.y;
         float distance = std::hypot(dx, dy);
@@ -224,8 +71,16 @@ void Footballer::update(float dt) {
             velocity.y = (dy / distance) * stats.speed;
         }
 
-        // --- 4. SEPARATION FLOCKING ---
-        // ONLY apply flocking if we aren't the primary chaser!
+        // ==========================================
+        // 2. SEPARATION FLOCKING
+        // ==========================================
+        // Don't apply flocking if this player is the main actor (Chasing, Pressing, or has ball)
+        bool ignoreFlocking = false;
+        AIBrainState state = brain->getCurrentState();
+        if (state == AIBrainState::Loose_Chasing || state == AIBrainState::Defending_Pressing || state == AIBrainState::Attacking_OnBall) {
+            ignoreFlocking = true;
+        }
+
         if (environment && !ignoreFlocking) {
             sf::Vector2f separationForce(0.f, 0.f);
             int neighbors = 0;
@@ -248,54 +103,121 @@ void Footballer::update(float dt) {
         }
     }
 
-    animate(dt);
+    // ==========================================
+    // 3. EXECUTE VISUALS & PHYSICS
+    // ==========================================
+    animator->update(dt, velocity, sprite, getTeam(), isHuman);
+    applyMovement(dt);
 
     applyMovement(dt);
 
+    // ==========================================
+    // 4. BALL COLLISION & POSSESSION
+    // ==========================================
+
+    // ADDED CHECK: Only pick it up if we aren't in a cooldown!
+    if (targetBall && targetBall->getCarrier() == nullptr && possessionCooldown <= 0.f) {
+
+        if (targetBall->isGrounded()) {
+            float distToBall = std::hypot(position.x - targetBall->getPosition().x,
+                                          position.y - targetBall->getPosition().y);
+
+            if (distToBall < 50.f) {
+                this->setPossession(true);
+                targetBall->setCarrier(this);
+            }
+        }
+    }
+
+    if (getPossession()) {
+        sf::Vector2f dribblePos = position;
+
+        // VISUAL FIX: If facing left, the sprite's center might be slightly offset.
+        // We push the ball a bit further to the left to compensate.
+        float offsetX = (facingDirection == 1.f) ? 35.f : 45.f;
+
+        dribblePos.x += (facingDirection * offsetX);
+        dribblePos.y += 45.f; // Down to the feet
+
+        targetBall->snapToPlayer(dribblePos);
+    }
 }
 
-void Footballer::animate(float dt) {
-    // 1. Are we running or standing still?
-    bool isMoving = (velocity.x != 0.f || velocity.y != 0.f);
+bool Footballer::attemptTackle(Footballer* enemy) {
+    if (!enemy || !enemy->getPossession()) return false;
 
-    if (isMoving) {
-        anim.timer += dt;
-        if (anim.timer >= anim.frameTime) {
-            anim.timer = 0.f;
-            anim.currentFrame = (anim.currentFrame + 1) % anim.frameCount;
+    // 1. Put the tackler on cooldown immediately so they can't spam spacebar
+    this->resetTackleCooldown();
+
+    // 2. THE MATH (The Dice Roll)
+    // Scale the stats so they are roughly on the same level
+    float myTacklePower = this->stats.tackling;
+    float enemyAgility = enemy->getStats().speed * 0.5f;
+
+    // Base 50% chance, modified by the stat difference
+    float successChance = 50.0f + (myTacklePower - enemyAgility);
+
+    // Clamp the odds so it's never a guaranteed 100% or an impossible 0%
+    if (successChance > 85.0f) successChance = 85.0f;
+    if (successChance < 15.0f) successChance = 15.0f;
+
+    // Roll a random number between 0 and 99
+    float roll = (rand() % 100);
+
+    // 3. THE OUTCOME
+    if (roll <= successChance) {
+        // --- SUCCESS! ---
+        enemy->stun(1.5f); // Stun the carrier
+        enemy->setPossession(false);
+
+        // Knock the ball loose
+        if (targetBall) {
+            float dx = enemy->getPosition().x - position.x;
+            float dy = enemy->getPosition().y - position.y;
+            float dist = std::hypot(dx, dy);
+
+            float dirX = (dist > 0.1f) ? (dx / dist) : facingDirection;
+            float dirY = (dist > 0.1f) ? (dy / dist) : 0.f;
+
+            targetBall->kick({dirX * 450.f, dirY * 450.f, 80.f});
         }
-    } else {
-        anim.currentFrame = 0; // If standing still, lock to Frame 0 (Neutral)
-        anim.timer = 0.f;
-    }
 
-    // 2. Slice the correct frame out of the sprite sheet
-    sprite.setTextureRect({{anim.currentFrame * 32, 0}, {32, 32}});
-
-    // 3. Flip AND Scale the sprite visually!
-    if (velocity.x < 0.f) {
-        sprite.setScale({-4.f, 4.f}); // FIX: Changed 1.f to 4.f!
-        facingDirection = -1.f;
-    }
-    else if (velocity.x > 0.f) {
-        sprite.setScale({4.f, 4.f});  // FIX: Changed 1.f to 4.f!
-        facingDirection = 1.f;
+        this->possessionCooldown = 0.3f;
+        return true;
     }
     else {
-        // Stationary
-        if (getTeam() == Team::Away) {
-            sprite.setScale({-4.f, 4.f}); // FIX: Changed 1.f to 4.f!
-            facingDirection = -1.f;
-        } else {
-            sprite.setScale({4.f, 4.f});  // FIX: Changed 1.f to 4.f!
-            facingDirection = 1.f;
-        }
+        // --- FAIL! (The Whiff) ---
+        // The tackler completely missed and stumbled!
+        this->stun(0.8f); // Freeze the tackler for a moment so the carrier escapes
+        return false;
     }
-
-    // Optional: Make the player you control pop a bit brighter, or darken AI slightly
-    if (isHuman) sprite.setColor(sf::Color::White);
-    else sprite.setColor(sf::Color(200, 200, 200));
+}
 
 
+void Footballer::setInputCooldown(float time) {
+    if (humanInput) {
+        humanInput->setActionCooldown(time);
+    }
+}
+
+void Footballer::resetToKickoff() {
+    // 1. Physically move them to their starting spot
+    position = startPosition;
+    sprite.setPosition(position);
+
+    // 2. WIPE THE AI MEMORY!
+    targetPos = startPosition;
+
+    // 3. Clear all physics and cooldowns
+    velocity = {0.f, 0.f};
+    setPossession(false);
+
+    this->stunTimer = 0.f;          // Assuming stunTimer is accessible from Entity
+    this->tackleCooldown = 0.f;     // Clear tackle cooldowns
+    this->possessionCooldown = 0.f; // Clear pickup cooldowns
+
+    // 4. Reset facing direction toward the enemy goal
+    facingDirection = (getTeam() == Team::Home) ? 1.f : -1.f;
+    sprite.setScale({facingDirection * 4.f, 4.f});
 }
 

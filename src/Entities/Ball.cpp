@@ -1,5 +1,6 @@
 #include "Ball.h"
 #include "../Core/Config.h"
+#include "Footballer.h"
 #include <cmath>
 #include <algorithm>
 #include <iostream>
@@ -107,18 +108,20 @@ void Ball::render(sf::RenderTarget& target) {
 
 void Ball::kick(sf::Vector3f force) {
     velocity3D += force;
+    carrier = nullptr;
 }
 
 void Ball::snapToPlayer(sf::Vector2f playerPos) {
-    // Kill all momentum
+    // 1. Kill all momentum so it stops rolling/bouncing
     velocity3D = {0.f, 0.f, 0.f};
 
-    // FIX: Trust the exact coordinates provided by MatchState!
+    // 2. Snap to the exact coordinates passed by the Footballer
     position3D.x = playerPos.x;
     position3D.y = playerPos.y;
     position3D.z = 0.f; // Force it to the ground
 
-    position = {position3D.x, position3D.y};
+    // 3. Keep the base GameObject position in sync (just in case)
+    position = playerPos;
 }
 
 bool Ball::isGrounded() const {
@@ -130,4 +133,19 @@ void Ball::resetPosition(float x, float y) {
 
     position3D = {x, y, 0.f};
     velocity3D = {0.f, 0.f, 0.f};
+}
+
+void Ball::setCarrier(Footballer* player) {
+    carrier = player;
+}
+
+Footballer* Ball::getCarrier() const {
+    return carrier;
+}
+
+Team Ball::getPossessionTeam() const {
+    if (carrier) {
+        return carrier->getTeam(); // Ask the carrier which team they are on
+    }
+    return Team::None; // No carrier? It's a loose ball!
 }

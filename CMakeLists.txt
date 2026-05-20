@@ -37,6 +37,16 @@ add_executable(StreetFootballManager
         src/Entities/Footballer.h
         src/States/MenuState.cpp
         src/States/MenuState.h
+        src/AI/AIBrain.cpp
+        src/AI/AIBrain.h
+        src/Visuals/FootballerAnimator.cpp
+        src/Visuals/FootballerAnimator.h
+        src/Controllers/HumanController.cpp
+        src/Controllers/HumanController.h
+        src/Managers/Referee.cpp
+        src/Managers/Referee.h
+        src/Managers/TeamManager.cpp
+        src/Managers/TeamManager.h
 )
 
 target_link_libraries(StreetFootballManager PRIVATE

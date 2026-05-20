@@ -1,6 +1,9 @@
 #pragma once
 #include "GameObject.h"
+#include "Entity.h"
 #include <SFML/Graphics/CircleShape.hpp>
+
+class Footballer;
 
 class Ball : public GameObject {
 private:
@@ -22,6 +25,8 @@ private:
     sf::Texture shadowTex;
     sf::Sprite shadowSprite;
 
+    Footballer* carrier = nullptr;
+
 public:
     Ball(float x, float y);
     ~Ball() override = default;
@@ -36,4 +41,8 @@ public:
 
     void snapToPlayer(sf::Vector2f playerPos);
     bool isGrounded() const;
+
+    void setCarrier(Footballer* player);
+    Footballer* getCarrier() const;
+    Team getPossessionTeam() const;
 };

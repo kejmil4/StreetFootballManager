@@ -2,6 +2,7 @@
 #include "GameObject.h"
 
 enum class Team {
+    None,
     Home,
     Away
 };
