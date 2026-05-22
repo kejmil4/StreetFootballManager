@@ -4,8 +4,9 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
+#include "../Managers/EnvironmentManager.h"
 
-Ball::Ball(float x, float y)
+Ball::Ball(float x, float y, EnvironmentManager* env)
     : GameObject(x, y),
       position3D({x, y, 0.f}),
       velocity3D({0.f, 0.f, 0.f}),
@@ -13,7 +14,8 @@ Ball::Ball(float x, float y)
       bounceFactor(0.6f),   // Retains 60% of its Z-velocity on bounce
       friction(0.98f),       // Loses 2% of X/Y velocity per frame when rolling
       ballSprite(ballTex),
-      shadowSprite(shadowTex)
+      shadowSprite(shadowTex),
+      envManager(env)
 {
 
     if (!ballTex.loadFromFile("assets/ball.png")) {

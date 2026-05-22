@@ -3,27 +3,24 @@
 #include "../Core/Config.h"
 #include "../Managers/Referee.h"
 #include "../Managers/TeamManager.h"
+#include "../Managers/EnvironmentManager.h"
 #include "GameOverState.h"
 #include "../Core/Game.h"
+#include "../States/MenuState.h"
 #include <iostream>
 
-MatchState::MatchState(Game* game, const MatchSettings& matchSettings) : GameState(game), pauseText(pauseFont), settings(matchSettings) {
-    // 1. Initialize the Systems
-    referee = std::make_unique<Referee>();
+MatchState::MatchState(Game* game, const MatchSettings& matchSettings) : GameState(game), settings(matchSettings) {
+    referee = std::make_unique<Referee>(static_cast<float>(settings.matchLengthSeconds));
     teamManager = std::make_unique<TeamManager>();
 
-    // 2. Setup Pause UI
-    if (!pauseFont.openFromFile("assets/font.ttf")) {
-        std::cerr << "Failed to load pause font\n";
-    }
-    pauseText.setString("PAUSED");
-    pauseText.setCharacterSize(100);
-    pauseText.setFillColor(sf::Color::Yellow);
-    pauseText.setPosition({800.f, 400.f}); // Adjust to center of your screen
+    pauseMenu = std::make_unique<PauseMenu>();
 
     // 3. Spawn the Pitch and Ball
     gameObjects.push_back(std::make_unique<Pitch>(settings.pitch));
-    auto ballPtr = std::make_unique<Ball>(Config::CENTER_X, Config::CENTER_Y);
+    envManager = std::make_unique<EnvironmentManager>(settings.pitch, settings.weather);
+
+    // When creating the Ball and Entities, you can now pass a pointer to envManager so they can read the modifiers!
+    auto ballPtr = std::make_unique<Ball>(Config::CENTER_X, Config::CENTER_Y, envManager.get());
     matchBall = ballPtr.get();
 
     gameObjects.push_back(std::move(ballPtr));
@@ -32,11 +29,14 @@ MatchState::MatchState(Game* game, const MatchSettings& matchSettings) : GameSta
 
 }
 
-void MatchState::update(float dt) {
-    if (isPaused) return;
+MatchState::~MatchState() = default;
 
+void MatchState::update(float dt) {
+    if (isPaused) {
+        pauseMenu->update(dt);
+        return;
+    }
     if (referee->updateClock(dt)) {
-        // MATCH IS OVER! Grab the scores and transition states!
         int finalHome = referee->getHomeScore();
         int finalAway = referee->getAwayScore();
 
@@ -58,6 +58,7 @@ void MatchState::update(float dt) {
 
     // 4. The TeamManager checks if the human just passed the ball or lost it
     teamManager->update(matchBall, gameObjects);
+    envManager->update(dt);
 }
 
 void MatchState::render(sf::RenderTarget& target) {
@@ -65,16 +66,30 @@ void MatchState::render(sf::RenderTarget& target) {
     for (auto& obj : gameObjects) {
         obj->render(target);
     }
+    envManager->render(target);
 
-    // Draw UI
     matchHUD.render(target, gameObjects);
     if (isPaused) {
-        target.draw(pauseText);
+        pauseMenu->render(target);
     }
 }
 
 void MatchState::handleInput(const sf::Event& event) {
-    // SFML 3.0 Syntax: Ask if the event is a KeyPressed event
+    if (isPaused) {
+        PauseAction action = pauseMenu->handleInput(event);
+
+        if (action == PauseAction::Resume) {
+            isPaused = false;
+        }
+        else if (action == PauseAction::Restart) {
+            // Re-loads the exact same state using your saved settings!
+            game->changeState(std::make_unique<MatchState>(game, settings));
+        }
+        else if (action == PauseAction::Quit) {
+            game->changeState(std::make_unique<MenuState>(game));
+        }
+        return;
+    }
     if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>()) {
 
         // Now you access the code directly from the pointer
@@ -85,20 +100,32 @@ void MatchState::handleInput(const sf::Event& event) {
 }
 
 void MatchState::spawnTeams() {
-    EntityStats playerStats = {100.f, 50.f, 50.f, 50.f, 1000.f};
+    EntityStats humanStats = {100.f, 50.f, 50.f, 50.f, 1000.f};
+
+    EntityStats aiStats = humanStats;
+    if (settings.difficulty == Difficulty::Easy) {
+        aiStats.speed *= 0.8f;
+        aiStats.passing *= 0.8f;
+        aiStats.maxStamina *= 0.8f;
+    } else if (settings.difficulty == Difficulty::Hard) {
+        aiStats.speed *= 1.2f;
+        aiStats.passing *= 1.2f;
+        aiStats.maxStamina *= 1.5f;
+    }
 
     // A simple array of Y-offsets to space players out automatically
     std::vector<float> yOffsets = { 0.f, -300.f, 300.f, -150.f, 150.f };
 
     // --- SPAWN HOME TEAM ---
     for (int i = 0; i < settings.teamSize; ++i) {
-        // Only make them human if we haven't hit the requested human count
         bool isHuman = (i < settings.homeHumans);
+
+        EntityStats statsToUse = isHuman ? humanStats : aiStats;
 
         float spawnX = Config::CENTER_X - 250.f; // Home side
         float spawnY = Config::CENTER_Y + (i < yOffsets.size() ? yOffsets[i] : 0.f);
 
-        auto player = std::make_unique<Footballer>(spawnX, spawnY, playerStats, matchBall, Team::Home, &gameObjects, isHuman);
+        auto player = std::make_unique<Footballer>(spawnX, spawnY, statsToUse, matchBall, Team::Home, &gameObjects, isHuman);
         player->setTeamManager(teamManager.get());
 
         // Only player 1 (the first spawned human) starts actively controlled
@@ -113,10 +140,12 @@ void MatchState::spawnTeams() {
     for (int i = 0; i < settings.teamSize; ++i) {
         bool isHuman = (i < settings.awayHumans);
 
+        EntityStats statsToUse = isHuman ? humanStats : aiStats;
+
         float spawnX = Config::CENTER_X + 250.f; // Away side
         float spawnY = Config::CENTER_Y + (i < yOffsets.size() ? yOffsets[i] : 0.f);
 
-        auto player = std::make_unique<Footballer>(spawnX, spawnY, playerStats, matchBall, Team::Away, &gameObjects, isHuman);
+        auto player = std::make_unique<Footballer>(spawnX, spawnY, statsToUse, matchBall, Team::Away, &gameObjects, isHuman);
         player->setTeamManager(teamManager.get());
 
         if (isHuman && i == 0) {

@@ -4,6 +4,7 @@
 #include <SFML/Graphics/CircleShape.hpp>
 
 class Footballer;
+class EnvironmentManager;
 
 class Ball : public GameObject {
 private:
@@ -29,8 +30,10 @@ private:
 
     Footballer* intendedReceiver = nullptr;
 
+    EnvironmentManager* envManager = nullptr;
+
 public:
-    Ball(float x, float y);
+    Ball(float x, float y, EnvironmentManager* env);
     ~Ball() override = default;
 
     void update(float dt) override;

@@ -49,6 +49,10 @@ add_executable(StreetFootballManager
         src/Managers/TeamManager.h
         src/States/gameOverState.cpp
         src/States/gameOverState.h
+        src/Managers/EnvironmentManager.cpp
+        src/Managers/EnvironmentManager.h
+        src/UI/PauseMenu.cpp
+        src/UI/PauseMenu.h
 )
 
 target_link_libraries(StreetFootballManager PRIVATE

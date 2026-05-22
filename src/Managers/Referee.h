@@ -7,14 +7,14 @@
 
 class Referee {
 private:
-    float matchDuration = 90.f;
+    float matchDuration;
     float timeRemaining;
 
     int homeScore = 0;
     int awayScore = 0;
 
 public:
-    Referee();
+    Referee(float duration);
     ~Referee() = default;
 
     // Returns true if the match is over!

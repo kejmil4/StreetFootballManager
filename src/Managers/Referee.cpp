@@ -2,9 +2,7 @@
 #include "../Core/Config.h" // Assuming this holds your pitch dimensions
 #include <iostream>
 
-Referee::Referee() {
-    timeRemaining = matchDuration;
-}
+Referee::Referee(float duration) : matchDuration(duration), timeRemaining(duration){}
 
 bool Referee::updateClock(float dt) {
     timeRemaining -= dt;

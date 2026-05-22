@@ -5,10 +5,13 @@
 #include "../UI/HUD.h"
 #include "../Managers/Referee.h"
 #include "../Managers/TeamManager.h"
+#include "../UI/PauseMenu.h"
 #include <vector>
 #include <memory>
 #include <SFML/Graphics/Text.hpp>
 #include <SFML/Graphics/Font.hpp>
+
+class EnvironmentManager;
 
 enum class PitchType { Grass, Asphalt, Mud };
 enum class WeatherType { Clear, Rain, Snow };
@@ -35,15 +38,16 @@ private:
     std::unique_ptr<TeamManager> teamManager;
     HUD matchHUD;
 
-    bool isPaused = false;
-    sf::Font pauseFont;
-    sf::Text pauseText;
+    std::unique_ptr<EnvironmentManager> envManager;
 
+    std::unique_ptr<PauseMenu> pauseMenu;
+
+    bool isPaused = false;
     void spawnTeams();
 
 public:
     MatchState(Game* game, const MatchSettings& matchSettings);
-    ~MatchState() override = default;
+    ~MatchState() override;
 
     void update(float dt) override;
     void render(sf::RenderTarget& target) override;
