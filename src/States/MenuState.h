@@ -5,23 +5,39 @@
 #include <vector>
 #include <string>
 
-// The 3 screens you mapped out
 enum class MenuScreen {
     Main,
     CustomMatch,
-    MatchSetup
+    Multiplayer,
+    MatchSetup,
+    Settings
+};
+
+enum class MatchType {
+    Solo,
+    LocalMultiplayer
 };
 
 class MenuState : public GameState {
 private:
     MenuScreen currentScreen;
-    int selectedIndex; // Tracks which option the user is hovering over
+    MatchType pendingMatchType;
+    int selectedIndex;
 
     sf::Font menuFont;
     sf::Text titleText;
     std::vector<sf::Text> menuOptions;
 
-    // Helper to generate the text options for the current screen
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
+
+    int optPitch = 0;   // 0=Grass, 1=Asphalt, 2=Mud
+    int optWeather = 0; // 0=Clear, 1=Rain, 2=Snow
+    int optDiff = 1;    // 0=Easy, 1=Medium, 2=Hard
+    int optTime = 1;    // 0=1min, 1=3min, 2=5min, 3=10min
+
+    void refreshSetupText();
+
     void loadScreen(MenuScreen screen);
 
 public:

@@ -3,9 +3,11 @@
 #include "../Core/Config.h"
 #include "../Managers/Referee.h"
 #include "../Managers/TeamManager.h"
+#include "GameOverState.h"
+#include "../Core/Game.h"
 #include <iostream>
 
-MatchState::MatchState(Game* game) : GameState(game), pauseText(pauseFont) {
+MatchState::MatchState(Game* game, const MatchSettings& matchSettings) : GameState(game), pauseText(pauseFont), settings(matchSettings) {
     // 1. Initialize the Systems
     referee = std::make_unique<Referee>();
     teamManager = std::make_unique<TeamManager>();
@@ -20,53 +22,25 @@ MatchState::MatchState(Game* game) : GameState(game), pauseText(pauseFont) {
     pauseText.setPosition({800.f, 400.f}); // Adjust to center of your screen
 
     // 3. Spawn the Pitch and Ball
-    gameObjects.push_back(std::make_unique<Pitch>());
+    gameObjects.push_back(std::make_unique<Pitch>(settings.pitch));
     auto ballPtr = std::make_unique<Ball>(Config::CENTER_X, Config::CENTER_Y);
     matchBall = ballPtr.get();
 
-    for (auto& obj : gameObjects) {
-        if (auto b = dynamic_cast<Ball*>(obj.get())) {
-            matchBall = b;
-            break;
-        }
-    }
-
-    // 4. Spawn the Teams
-    EntityStats playerStats = {150.f, 50.f, 50.f, 50.f, 1000.f};
-    EntityStats enemyStats = {100.f, 50.f, 50.f, 50.f, 1000.f};
-
-    // HOME TEAM (Left Side)
-    gameObjects.push_back(std::make_unique<Footballer>(Config::CENTER_X - 100.f, Config::CENTER_Y, playerStats, matchBall, Team::Home, &gameObjects, true));
-    gameObjects.push_back(std::make_unique<Footballer>(Config::CENTER_X - 300.f, Config::CENTER_Y - 300.f, playerStats, matchBall, Team::Home, &gameObjects, false));
-    gameObjects.push_back(std::make_unique<Footballer>(Config::CENTER_X - 300.f, Config::CENTER_Y + 300.f, playerStats, matchBall, Team::Home, &gameObjects, false));
-
-    // AWAY TEAM (Right Side) - All AI
-    gameObjects.push_back(std::make_unique<Footballer>(Config::CENTER_X + 450.f, Config::CENTER_Y, enemyStats, matchBall, Team::Away, &gameObjects, false));
-    gameObjects.push_back(std::make_unique<Footballer>(Config::CENTER_X + 400.f, Config::CENTER_Y - 300.f, enemyStats, matchBall, Team::Away, &gameObjects, false));
-    gameObjects.push_back(std::make_unique<Footballer>(Config::CENTER_X + 400.f, Config::CENTER_Y + 300.f, enemyStats, matchBall, Team::Away, &gameObjects, false));
-
     gameObjects.push_back(std::move(ballPtr));
 
-    for (auto& obj : gameObjects) {
-        if (auto f = dynamic_cast<Footballer*>(obj.get())) {
+    spawnTeams();
 
-            // Give every footballer the TeamManager pointer
-            f->setTeamManager(teamManager.get());
-
-            if (f->getTeam() == Team::Home && f->getIsHuman()) {
-                teamManager->initializeHuman(f);
-            }
-        }
-    }
 }
 
 void MatchState::update(float dt) {
     if (isPaused) return;
 
-    // 1. Tick the Match Clock
     if (referee->updateClock(dt)) {
-        std::cout << "FULL TIME!\n";
-        // game->changeState(new GameOverState(...)); // Transition out when ready
+        // MATCH IS OVER! Grab the scores and transition states!
+        int finalHome = referee->getHomeScore();
+        int finalAway = referee->getAwayScore();
+
+        game->changeState(std::make_unique<GameOverState>(game, finalHome, finalAway));
         return;
     }
     matchHUD.updateTimer(referee->getTimeRemaining());
@@ -106,6 +80,59 @@ void MatchState::handleInput(const sf::Event& event) {
         // Now you access the code directly from the pointer
         if (keyPressed->code == sf::Keyboard::Key::Escape) {
             isPaused = !isPaused;
+        }
+    }
+}
+
+void MatchState::spawnTeams() {
+    EntityStats playerStats = {100.f, 50.f, 50.f, 50.f, 1000.f};
+
+    // A simple array of Y-offsets to space players out automatically
+    std::vector<float> yOffsets = { 0.f, -300.f, 300.f, -150.f, 150.f };
+
+    // --- SPAWN HOME TEAM ---
+    for (int i = 0; i < settings.teamSize; ++i) {
+        // Only make them human if we haven't hit the requested human count
+        bool isHuman = (i < settings.homeHumans);
+
+        float spawnX = Config::CENTER_X - 250.f; // Home side
+        float spawnY = Config::CENTER_Y + (i < yOffsets.size() ? yOffsets[i] : 0.f);
+
+        auto player = std::make_unique<Footballer>(spawnX, spawnY, playerStats, matchBall, Team::Home, &gameObjects, isHuman);
+        player->setTeamManager(teamManager.get());
+
+        // Only player 1 (the first spawned human) starts actively controlled
+        if (isHuman && i == 0) {
+            teamManager->initializeHuman(player.get(), ControllerID::Player1);
+        }
+
+        gameObjects.push_back(std::move(player));
+    }
+
+    // --- SPAWN AWAY TEAM ---
+    for (int i = 0; i < settings.teamSize; ++i) {
+        bool isHuman = (i < settings.awayHumans);
+
+        float spawnX = Config::CENTER_X + 250.f; // Away side
+        float spawnY = Config::CENTER_Y + (i < yOffsets.size() ? yOffsets[i] : 0.f);
+
+        auto player = std::make_unique<Footballer>(spawnX, spawnY, playerStats, matchBall, Team::Away, &gameObjects, isHuman);
+        player->setTeamManager(teamManager.get());
+
+        if (isHuman && i == 0) {
+            teamManager->initializeHuman(player.get(), ControllerID::Player2);
+        }
+
+        gameObjects.push_back(std::move(player));
+    }
+
+    // Finally, ensure the ball is pushed back to the end of the draw order so it renders on top
+    for (auto it = gameObjects.begin(); it != gameObjects.end(); ++it) {
+        if (dynamic_cast<Ball*>(it->get())) {
+            auto ballNode = std::move(*it);
+            gameObjects.erase(it);
+            gameObjects.push_back(std::move(ballNode));
+            break;
         }
     }
 }

@@ -7,7 +7,7 @@
 
 class Referee {
 private:
-    float matchDuration = 180.f;
+    float matchDuration = 90.f;
     float timeRemaining;
 
     int homeScore = 0;

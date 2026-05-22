@@ -4,20 +4,38 @@
 #include "../Managers/TeamManager.h"
 #include "../Core/Config.h"
 #include <cmath>
-#include <cstdlib> // For rand()
 
-HumanController::HumanController(Footballer* owner, const std::vector<std::unique_ptr<GameObject>>* env, Ball* ball)
-    : owner(owner), environment(env), targetBall(ball) {}
+HumanController::HumanController(Footballer* owner, const std::vector<std::unique_ptr<GameObject>>* env, Ball* ball, ControllerID id)
+    : owner(owner), environment(env), targetBall(ball), id(id) {}
 
 void HumanController::update(float dt) {
     if (actionCooldown > 0.f) actionCooldown -= dt;
 
-    // 1. Calculate Movement Intent (WASD)
     sf::Vector2f moveDir(0.f, 0.f);
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W)) moveDir.y -= 1.f;
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S)) moveDir.y += 1.f;
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) moveDir.x -= 1.f;
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) moveDir.x += 1.f;
+    bool passKey, shootKey, modKey;
+
+    if (id == ControllerID::Player1) {
+        // PLAYER 1: WASD, E, Space, LShift
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W)) moveDir.y -= 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S)) moveDir.y += 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) moveDir.x -= 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) moveDir.x += 1.f;
+
+        passKey  = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::E);
+        shootKey = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space);
+        modKey   = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift);
+    }
+    else {
+        // PLAYER 2: Arrows, Period (.), Enter, RShift
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up)) moveDir.y -= 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Down)) moveDir.y += 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left)) moveDir.x -= 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right)) moveDir.x += 1.f;
+
+        passKey  = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Period);
+        shootKey = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Enter);
+        modKey   = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::RShift);
+    }
 
     // Normalize movement
     if (moveDir.x != 0.f && moveDir.y != 0.f) {
@@ -39,67 +57,93 @@ void HumanController::update(float dt) {
     // ==========================================
     // 2. THE 'E' KEY: Passing & Switching
     // ==========================================
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::E) && actionCooldown <= 0.f) {
+    if (passKey && actionCooldown <= 0.f) {
         actionCooldown = 0.3f;
 
         if (owner->getPossession()) {
             // OFFENSE: Pass the ball
             Footballer* bestTarget = findBestPassTarget(aimDir);
             if (bestTarget) {
-                // Aim directly at the target's current position
-                float dx = bestTarget->getPosition().x - owner->getPosition().x;
-                float dy = bestTarget->getPosition().y - owner->getPosition().y;
-                float dist = std::hypot(dx, dy);
-                owner->kickBall({(dx / dist) * 550.f, (dy / dist) * 550.f, 30.f});
 
-                if (teamManager) teamManager->switchHumanControl(bestTarget);
+                float initialDx = bestTarget->getPosition().x - owner->getPosition().x;
+                float initialDy = bestTarget->getPosition().y - owner->getPosition().y;
+                float initialDist = std::hypot(initialDx, initialDy);
+
+                // 1. CHECK FOR LOB MODIFIER
+                bool isLob = modKey;
+
+                // Adjust speeds: High passes hang in the air longer, so we adjust horizontal travel
+                float passSpeed = isLob ? 380.f : 450.f;
+                float launchHeight = isLob ? 320.f : 15.f;
+
+                // 2. PREDICTIVE MATH (Leading the receiver)
+                float timeToReach = initialDist / passSpeed;
+                sf::Vector2f targetVel = bestTarget->getVelocity();
+                sf::Vector2f predictedPos = bestTarget->getPosition();
+
+                if (std::hypot(targetVel.x, targetVel.y) > 10.f) {
+                    predictedPos.x += (targetVel.x * timeToReach);
+                    predictedPos.y += (targetVel.y * timeToReach);
+                }
+
+                // 3. Fire the Ball
+                float dx = predictedPos.x - owner->getPosition().x;
+                float dy = predictedPos.y - owner->getPosition().y;
+                float dist = std::hypot(dx, dy);
+
+                targetBall->setIntendedReceiver(bestTarget);
+
+                // Apply the trajectory!
+                owner->kickBall({(dx / dist) * passSpeed, (dy / dist) * passSpeed, launchHeight});
             }
+
         }
         else {
             // DEFENSE: Switch player to whoever is closest to the ball
             Footballer* closestToBall = findClosestTeammateToBall();
             if (closestToBall && teamManager) {
-                teamManager->switchHumanControl(closestToBall);
+                teamManager->switchHumanControl(closestToBall, this->id);
             }
         }
     }
 
 
     // ==========================================
-    // 3. THE 'SPACEBAR': Shooting & Tackling
+    // THE 'SPACEBAR': Shooting (With Chip Upgrade!)
     // ==========================================
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && actionCooldown <= 0.f) {
-        actionCooldown = 0.5f;
+    if (shootKey && actionCooldown <= 0.f) {
+        actionCooldown = 0.6f; // Slight cooldown so they can't machine-gun shots
 
         if (owner->getPossession()) {
-            // OFFENSE: SHOOTING (With the Inaccuracy Fix!)
+            // Determine aiming direction based on current WASD movement input,
+            // or fallback to the direction the player is currently facing if standing still
+            sf::Vector2f shotDir = moveDir;
+            if (shotDir.x == 0.f && shotDir.y == 0.f) {
+                shotDir.x = owner->getFacingDirection();
+            } else {
+                float length = std::hypot(shotDir.x, shotDir.y);
+                shotDir.x /= length;
+                shotDir.y /= length;
+            }
 
-            // Assuming Home attacks Right (1820) and Away attacks Left (100)
-            float goalX = (owner->getTeam() == Team::Home) ? 1820.f : 100.f;
-            float goalY = Config::CENTER_Y; // Aim for center of goal
+            // 1. CHECK FOR CHIP MODIFIER
+            bool isChip = modKey;
 
-            float dx = goalX - owner->getPosition().x;
-            float dy = goalY - owner->getPosition().y;
-            float dist = std::hypot(dx, dy);
+            // 2. ADJUST TRAJECTORY
+            // A chipped shot drops forward power to scoop the ball way up into the sky!
+            float shotSpeed   = isChip ? 420.f : 650.f;
+            float launchHeight = isChip ? 280.f : 120.f;
 
-            // Normalize base direction
-            float dirX = dx / dist;
-            float dirY = dy / dist;
+            // 3. FORCE LOOSE BALL (No intended receiver on a shot!)
+            if (targetBall) {
+                targetBall->setIntendedReceiver(nullptr);
+            }
 
-            // THE NERF: Cone of Inaccuracy
-            // The further away you are, the wider the spread.
-            // If distance is 1500px, spread becomes massive.
-            float inaccuracyFactor = dist / 1920.f; // Scale 0.0 to ~1.0
-            float maxSpreadAngle = 0.8f; // Roughly 45 degrees in radians
+            // 4. Unleash the Shot!
+            owner->kickBall({shotDir.x * shotSpeed, shotDir.y * shotSpeed, launchHeight});
 
-            // Random angle between -spread and +spread
-            float randomSpread = ((rand() % 100) / 100.f * 2.f - 1.f) * (maxSpreadAngle * inaccuracyFactor);
-
-            // Rotate the vector by the random angle
-            float finalDirX = dirX * std::cos(randomSpread) - dirY * std::sin(randomSpread);
-            float finalDirY = dirX * std::sin(randomSpread) + dirY * std::cos(randomSpread);
-
-            owner->kickBall({finalDirX * 600.f, finalDirY * 600.f, 150.f});
+            // Loose possession immediately
+            owner->setPossession(false);
         }
         else {
             // DEFENSE: TACKLING
@@ -108,10 +152,8 @@ void HumanController::update(float dt) {
                 float dist = std::hypot(carrier->getPosition().x - owner->getPosition().x,
                                         carrier->getPosition().y - owner->getPosition().y);
 
-                if (dist < 60.f && owner->canTackle()) {
-
+                if (dist < 80.f && owner->canTackle()) {
                     owner->attemptTackle(carrier);
-
                 }
             }
         }

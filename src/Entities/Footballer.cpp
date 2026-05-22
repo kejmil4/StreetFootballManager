@@ -24,8 +24,9 @@ Footballer::Footballer(float x, float y, const EntityStats& baseStats, Ball* bal
 
 Footballer::~Footballer() = default;
 
-void Footballer::makeHuman() {
+void Footballer::makeHuman(ControllerID id) {
     isHuman = true;
+    if (humanInput) humanInput->setControllerID(id);
 }
 
 void Footballer::makeAI() {
@@ -109,35 +110,56 @@ void Footballer::update(float dt) {
     animator->update(dt, velocity, sprite, getTeam(), isHuman);
     applyMovement(dt);
 
-    applyMovement(dt);
 
     // ==========================================
     // 4. BALL COLLISION & POSSESSION
     // ==========================================
 
-    // ADDED CHECK: Only pick it up if we aren't in a cooldown!
     if (targetBall && targetBall->getCarrier() == nullptr && possessionCooldown <= 0.f) {
-
         if (targetBall->isGrounded()) {
+
             float distToBall = std::hypot(position.x - targetBall->getPosition().x,
                                           position.y - targetBall->getPosition().y);
 
-            if (distToBall < 50.f) {
+            float currentPickupRadius = 45.f;
+
+            Footballer* receiver = targetBall->getIntendedReceiver();
+            if (receiver != nullptr) {
+                if (receiver == this) {
+                    currentPickupRadius = 55.f;
+                }
+                else if (receiver->getTeam() != this->getTeam()) {
+                    currentPickupRadius = 22.f;
+                }
+                else {
+                    currentPickupRadius = 30.f;
+                }
+            }
+
+            // Perform the touch check using our dynamic radius
+            if (distToBall < currentPickupRadius) {
                 this->setPossession(true);
                 targetBall->setCarrier(this);
+
+                // The pass has been successfully caught or intercepted! Clear the intention.
+                targetBall->setIntendedReceiver(nullptr);
             }
         }
     }
 
+    // If I own the ball, I must drag it with me!
     if (getPossession()) {
+
+        // 1. Ask the Animator exactly which way the sprite is currently drawn!
+        float currentFaceDir = getFacingDirection();
+
+        // 2. The Dribble Math
         sf::Vector2f dribblePos = position;
 
-        // VISUAL FIX: If facing left, the sprite's center might be slightly offset.
-        // We push the ball a bit further to the left to compensate.
-        float offsetX = (facingDirection == 1.f) ? 35.f : 45.f;
+        float offsetX = (currentFaceDir == 1.f) ? 25.f : 0.f;
 
-        dribblePos.x += (facingDirection * offsetX);
-        dribblePos.y += 45.f; // Down to the feet
+        dribblePos.x += (currentFaceDir * offsetX);
+        dribblePos.y += 55.f; // Push down to the feet
 
         targetBall->snapToPlayer(dribblePos);
     }
@@ -146,37 +168,28 @@ void Footballer::update(float dt) {
 bool Footballer::attemptTackle(Footballer* enemy) {
     if (!enemy || !enemy->getPossession()) return false;
 
-    // 1. Put the tackler on cooldown immediately so they can't spam spacebar
     this->resetTackleCooldown();
 
-    // 2. THE MATH (The Dice Roll)
-    // Scale the stats so they are roughly on the same level
     float myTacklePower = this->stats.tackling;
     float enemyAgility = enemy->getStats().speed * 0.5f;
 
-    // Base 50% chance, modified by the stat difference
     float successChance = 50.0f + (myTacklePower - enemyAgility);
 
-    // Clamp the odds so it's never a guaranteed 100% or an impossible 0%
     if (successChance > 85.0f) successChance = 85.0f;
     if (successChance < 15.0f) successChance = 15.0f;
 
-    // Roll a random number between 0 and 99
     float roll = (rand() % 100);
 
-    // 3. THE OUTCOME
     if (roll <= successChance) {
-        // --- SUCCESS! ---
-        enemy->stun(1.5f); // Stun the carrier
+        enemy->stun(1.5f);
         enemy->setPossession(false);
 
-        // Knock the ball loose
         if (targetBall) {
             float dx = enemy->getPosition().x - position.x;
             float dy = enemy->getPosition().y - position.y;
             float dist = std::hypot(dx, dy);
 
-            float dirX = (dist > 0.1f) ? (dx / dist) : facingDirection;
+            float dirX = (dist > 0.1f) ? (dx / dist) : getFacingDirection();
             float dirY = (dist > 0.1f) ? (dy / dist) : 0.f;
 
             targetBall->kick({dirX * 450.f, dirY * 450.f, 80.f});
@@ -186,9 +199,7 @@ bool Footballer::attemptTackle(Footballer* enemy) {
         return true;
     }
     else {
-        // --- FAIL! (The Whiff) ---
-        // The tackler completely missed and stumbled!
-        this->stun(0.8f); // Freeze the tackler for a moment so the carrier escapes
+        this->stun(0.8f);
         return false;
     }
 }
@@ -216,8 +227,9 @@ void Footballer::resetToKickoff() {
     this->tackleCooldown = 0.f;     // Clear tackle cooldowns
     this->possessionCooldown = 0.f; // Clear pickup cooldowns
 
-    // 4. Reset facing direction toward the enemy goal
-    facingDirection = (getTeam() == Team::Home) ? 1.f : -1.f;
-    sprite.setScale({facingDirection * 4.f, 4.f});
 }
 
+float Footballer::getFacingDirection() const {
+    if (animator) return animator->getFacingDirection();
+    return 1.f; // Fallback just in case
+}

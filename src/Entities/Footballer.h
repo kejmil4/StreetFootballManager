@@ -32,8 +32,6 @@ private:
     // --- Movement & AI Data ---
     sf::Vector2f targetPos;
 
-    float facingDirection = 1.f;
-
     float possessionCooldown = 0.f;
 
 public:
@@ -44,7 +42,7 @@ public:
 
     // --- Switching Mechanics ---
     bool getIsHuman() const { return isHuman; }
-    void makeHuman();
+    void makeHuman(ControllerID id = ControllerID::Player1);
     void makeAI();
 
     // --- AI Puppet Controls ---
@@ -53,7 +51,7 @@ public:
     void kickBall(sf::Vector3f power);
 
     // --- Visual Getters ---
-    float getFacingDirection() const { return facingDirection; }
+    float getFacingDirection() const;
 
     void setVelocity(sf::Vector2f v) { velocity = v; }
 
@@ -67,4 +65,6 @@ public:
     void setInputCooldown(float time);
 
     void resetToKickoff();
+
+    sf::Vector2f getVelocity() const { return velocity; }
 };

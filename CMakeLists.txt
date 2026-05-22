@@ -47,6 +47,8 @@ add_executable(StreetFootballManager
         src/Managers/Referee.h
         src/Managers/TeamManager.cpp
         src/Managers/TeamManager.h
+        src/States/gameOverState.cpp
+        src/States/gameOverState.h
 )
 
 target_link_libraries(StreetFootballManager PRIVATE

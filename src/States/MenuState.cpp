@@ -5,7 +5,7 @@
 #include "MatchState.h"
 #include "../Core/Game.h"
 
-MenuState::MenuState(Game* game) : GameState(game), titleText(menuFont) {
+MenuState::MenuState(Game* game) : GameState(game), titleText(menuFont), bgSprite(bgTexture) {
     if (!menuFont.openFromFile("assets/font.ttf")) {
         std::cerr << "FAILED TO LOAD: assets/font.ttf for Menu!\n";
     }
@@ -20,53 +20,78 @@ MenuState::MenuState(Game* game) : GameState(game), titleText(menuFont) {
 
 void MenuState::loadScreen(MenuScreen screen) {
     currentScreen = screen;
-    selectedIndex = 0; // Reset the cursor to the top option
-    menuOptions.clear(); // Clear the old screen's buttons
+    selectedIndex = 0;
+    menuOptions.clear();
 
     std::string titleStr;
     std::vector<std::string> optionsText;
+    std::string bgFilePath;
 
-    // --- YOUR MENU MAP ---
+    float startX = Config::CENTER_X;
+    float startY = 400.f;
+    float spacingY = 80.f;
+
+    // --- SCREEN SETUP ---
     if (screen == MenuScreen::Main) {
-        titleStr = "RETRO STREET SOCCER";
-        optionsText = {"Custom Match", "Career Mode (WIP)", "Exit Game"};
+        titleStr = "";
+        optionsText = {"Custom Match", "Career Mode", "Settings", "Exit Game"};
+        bgFilePath = "assets/menu.png";
+
+        startX = Config::WINDOW_WIDTH * 0.835f;
+        startY = Config::WINDOW_HEIGHT * 0.285f;
+        spacingY = Config::WINDOW_HEIGHT * 0.155f;
     }
     else if (screen == MenuScreen::CustomMatch) {
         titleStr = "CUSTOM MATCH";
-        optionsText = {"Solo vs AI", "Multiplayer (WIP)", "Back"};
+        optionsText = {"Solo vs AI", "Multiplayer", "Back"};
+        // bgFilePath = "assets/custom_bg.png";
+    }
+    else if (screen == MenuScreen::Multiplayer) {
+        titleStr = "MULTIPLAYER";
+        optionsText = {"Local Multiplayer", "LAN Multiplayer (WIP)", "Back"};
+    }
+    else if (screen == MenuScreen::Settings) {
+        titleStr = "SETTINGS";
+        optionsText = {"Controls (WIP)", "Back"};
     }
     else if (screen == MenuScreen::MatchSetup) {
-        titleStr = "MATCH SETUP";
-        optionsText = {
-            "Difficulty: Normal",
-            "Weather: Clear",
-            "Length: 3 Min",
-            "START MATCH",
-            "Back"
-        };
+        titleStr = (pendingMatchType == MatchType::Solo) ? "SOLO SETUP" : "LOCAL MULTIPLAYER SETUP";
+
+        optionsText = {"Pitch", "Weather", "Difficulty", "Time", "Launch Game!", "Back"};
     }
 
-    // Set the Title Text and center it near the top
-    titleText.setString(titleStr);
-    sf::FloatRect titleBounds = titleText.getLocalBounds();
-    titleText.setOrigin({titleBounds.size.x / 2.0f, titleBounds.size.y / 2.0f});
-    titleText.setPosition({Config::CENTER_X, 200.f});
-
-    // Generate the clickable options
-    float startY = 400.f; // Where the first option starts
-    float spacingY = 80.f; // Space between each option
+    if (!bgFilePath.empty()) {
+        if (!bgTexture.loadFromFile(bgFilePath)) {
+            std::cerr << "Failed to load background: " << bgFilePath << "\n";
+        } else {
+            bgSprite.setTexture(bgTexture, true);
+            bgSprite.setScale({Config::WINDOW_WIDTH / bgSprite.getLocalBounds().size.x,
+                               Config::WINDOW_HEIGHT / bgSprite.getLocalBounds().size.y});
+        }
+    } else {
+        bgTexture = sf::Texture();
+        bgSprite.setTexture(bgTexture, true);
+    }
 
     for (size_t i = 0; i < optionsText.size(); ++i) {
         sf::Text option(menuFont);
         option.setString(optionsText[i]);
-        option.setCharacterSize(50);
 
-        // Center the text
+        if (screen == MenuScreen::Main) {
+            option.setCharacterSize(28);
+        } else {
+            option.setCharacterSize(50);
+        }
+
         sf::FloatRect bounds = option.getLocalBounds();
         option.setOrigin({bounds.size.x / 2.0f, bounds.size.y / 2.0f});
-        option.setPosition({Config::CENTER_X, startY + (i * spacingY)});
+
+        option.setPosition({startX, startY + (i * spacingY)});
 
         menuOptions.push_back(option);
+    }
+    if (screen == MenuScreen::MatchSetup) {
+        refreshSetupText();
     }
 }
 
@@ -83,28 +108,81 @@ void MenuState::handleInput(const sf::Event& event) {
             if (selectedIndex >= menuOptions.size()) selectedIndex = 0;
         }
 
-        // --- SELECTION (ENTER KEY) ---
-        else if (keyPress->code == sf::Keyboard::Key::Enter) {
+        if (currentScreen == MenuScreen::MatchSetup) {
+            if (keyPress->code == sf::Keyboard::Key::Left) {
+                if (selectedIndex == 0) optPitch = (optPitch - 1 + 3) % 3;
+                else if (selectedIndex == 1) optWeather = (optWeather - 1 + 3) % 3;
+                else if (selectedIndex == 2) optDiff = (optDiff - 1 + 3) % 3;
+                else if (selectedIndex == 3) optTime = (optTime - 1 + 4) % 4; // Time has 4 options
+                refreshSetupText(); // Instantly update the visuals
+            }
+            else if (keyPress->code == sf::Keyboard::Key::Right) {
+                if (selectedIndex == 0) optPitch = (optPitch + 1) % 3;
+                else if (selectedIndex == 1) optWeather = (optWeather + 1) % 3;
+                else if (selectedIndex == 2) optDiff = (optDiff + 1) % 3;
+                else if (selectedIndex == 3) optTime = (optTime + 1) % 4;
+                refreshSetupText();
+            }
+        }
 
-            // 1. MAIN MENU LOGIC
+        if (keyPress->code == sf::Keyboard::Key::Enter) {
+
+            // 1. MAIN MENU
             if (currentScreen == MenuScreen::Main) {
                 if (selectedIndex == 0) loadScreen(MenuScreen::CustomMatch);
-                else if (selectedIndex == 2) game->closeApplication();
+                else if (selectedIndex == 2) loadScreen(MenuScreen::Settings);
+                else if (selectedIndex == 3) game->closeApplication();
             }
-
-            // 2. CUSTOM MATCH LOGIC (This was missing!)
+            // 2. CUSTOM MATCH MENU
             else if (currentScreen == MenuScreen::CustomMatch) {
-                if (selectedIndex == 0) loadScreen(MenuScreen::MatchSetup);
-                else if (selectedIndex == 2) loadScreen(MenuScreen::Main); // Go Back
-            }
-
-            // 3. MATCH SETUP LOGIC
-            else if (currentScreen == MenuScreen::MatchSetup) {
-                if (selectedIndex == 3) {
-                    // Launch the game!
-                    game->changeState(std::make_unique<MatchState>(game));
+                if (selectedIndex == 0) {
+                    pendingMatchType = MatchType::Solo; // Remember choice!
+                    loadScreen(MenuScreen::MatchSetup);
                 }
-                else if (selectedIndex == 4) loadScreen(MenuScreen::CustomMatch); // Go Back
+                else if (selectedIndex == 1) loadScreen(MenuScreen::Multiplayer);
+                else if (selectedIndex == 2) loadScreen(MenuScreen::Main);
+            }
+            // 3. MULTIPLAYER MENU
+            else if (currentScreen == MenuScreen::Multiplayer) {
+                if (selectedIndex == 0) {
+                    pendingMatchType = MatchType::LocalMultiplayer; // Remember choice!
+                    loadScreen(MenuScreen::MatchSetup);
+                }
+                else if (selectedIndex == 2) loadScreen(MenuScreen::CustomMatch);
+            }
+            // 4. SETTINGS MENU
+            else if (currentScreen == MenuScreen::Settings) {
+                if (selectedIndex == 1) loadScreen(MenuScreen::Main);
+            }
+            // 5. MATCH SETUP (LAUNCH!)
+            else if (currentScreen == MenuScreen::MatchSetup) {
+                if (selectedIndex == 4) { // "Launch Game!"
+
+                    MatchSettings settings;
+
+                    settings.pitch = static_cast<PitchType>(optPitch);
+                    settings.weather = static_cast<WeatherType>(optWeather);
+                    settings.difficulty = static_cast<Difficulty>(optDiff);
+
+                    if (optTime == 0) settings.matchLengthSeconds = 60;
+                    else if (optTime == 1) settings.matchLengthSeconds = 180;
+                    else if (optTime == 2) settings.matchLengthSeconds = 300;
+                    else if (optTime == 3) settings.matchLengthSeconds = 600;
+
+                    if (pendingMatchType == MatchType::Solo) {
+                        settings.homeHumans = 1;
+                        settings.awayHumans = 0;
+                    } else if (pendingMatchType == MatchType::LocalMultiplayer) {
+                        settings.homeHumans = 1;
+                        settings.awayHumans = 1;
+                    }
+
+                    game->changeState(std::make_unique<MatchState>(game, settings));
+                }
+                else if (selectedIndex == 5) { // "Back"
+                    if (pendingMatchType == MatchType::Solo) loadScreen(MenuScreen::CustomMatch);
+                    else loadScreen(MenuScreen::Multiplayer);
+                }
             }
         }
     }
@@ -115,7 +193,7 @@ void MenuState::update(float dt) {
     for (size_t i = 0; i < menuOptions.size(); ++i) {
         if (i == selectedIndex) {
             menuOptions[i].setFillColor(sf::Color::Cyan); // Highlighted
-            menuOptions[i].setScale({1.1f, 1.1f});        // Make it slightly bigger
+            menuOptions[i].setScale({1.1f, 1.1f});
         } else {
             menuOptions[i].setFillColor(sf::Color::White); // Normal
             menuOptions[i].setScale({1.0f, 1.0f});
@@ -124,8 +202,36 @@ void MenuState::update(float dt) {
 }
 
 void MenuState::render(sf::RenderTarget& target) {
-    target.draw(titleText);
+    target.draw(bgSprite);
     for (auto& option : menuOptions) {
         target.draw(option);
+    }
+}
+
+void MenuState::refreshSetupText() {
+    if (currentScreen != MenuScreen::MatchSetup) return;
+
+    std::vector<std::string> pitches = {"< Pitch: Grass >", "< Pitch: Asphalt >", "< Pitch: Mud >"};
+    std::vector<std::string> weathers = {"< Weather: Clear >", "< Weather: Rain >", "< Weather: Snow >"};
+    std::vector<std::string> diffs = {"< Difficulty: Easy >", "< Difficulty: Medium >", "< Difficulty: Hard >"};
+    std::vector<std::string> times = {"< Time: 1 Min >", "< Time: 3 Mins >", "< Time: 5 Mins >", "< Time: 10 Mins >"};
+
+    menuOptions[0].setString(pitches[optPitch]);
+    menuOptions[1].setString(weathers[optWeather]);
+
+    if (pendingMatchType == MatchType::Solo) {
+        menuOptions[2].setString(diffs[optDiff]);
+        menuOptions[3].setString(times[optTime]);
+        menuOptions[4].setString("Launch Game!");
+        menuOptions[5].setString("Back");
+    } else {
+        menuOptions[2].setString(times[optTime]);
+        menuOptions[3].setString("Launch Game!");
+        menuOptions[4].setString("Back");
+    }
+
+    for (int i = 0; i < 4; ++i) {
+        sf::FloatRect bounds = menuOptions[i].getLocalBounds();
+        menuOptions[i].setOrigin({bounds.size.x / 2.0f, bounds.size.y / 2.0f});
     }
 }

@@ -51,11 +51,13 @@ void Ball::update(float dt) {
             velocity3D.z = 0.f; // Stop micro-bouncing
         }
 
-        // Apply friction to X and Y ONLY when touching the ground
         velocity3D.x *= friction;
         velocity3D.y *= friction;
 
-        // Hard stop if moving incredibly slowly to prevent endless rolling
+        if (std::hypot(velocity3D.x, velocity3D.y) < 50.f) {
+            intendedReceiver = nullptr;
+        }
+
         if (std::abs(velocity3D.x) < 5.f) velocity3D.x = 0.f;
         if (std::abs(velocity3D.y) < 5.f) velocity3D.y = 0.f;
     }

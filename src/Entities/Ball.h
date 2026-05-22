@@ -27,6 +27,8 @@ private:
 
     Footballer* carrier = nullptr;
 
+    Footballer* intendedReceiver = nullptr;
+
 public:
     Ball(float x, float y);
     ~Ball() override = default;
@@ -45,4 +47,7 @@ public:
     void setCarrier(Footballer* player);
     Footballer* getCarrier() const;
     Team getPossessionTeam() const;
+
+    void setIntendedReceiver(Footballer* player) { intendedReceiver = player; }
+    Footballer* getIntendedReceiver() const { return intendedReceiver; }
 };

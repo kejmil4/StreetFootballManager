@@ -10,13 +10,13 @@ namespace Config {
 
     // --- NEW: PITCH PLAYABLE BOUNDARIES ---
     // Based on 480x270 scaled by 4x. (20px horizontal padding, 10px vertical)
-    constexpr float PITCH_LEFT_X = 80.f;
-    constexpr float PITCH_RIGHT_X = 1840.f;
-    constexpr float PITCH_TOP_Y = 40.f;
-    constexpr float PITCH_BOTTOM_Y = 1040.f;
+    constexpr float PITCH_LEFT_X = 230.f;
+    constexpr float PITCH_RIGHT_X = 1690.f;
+    constexpr float PITCH_TOP_Y = 180.f;
+    constexpr float PITCH_BOTTOM_Y = 880.f;
 
     // --- NEW: STREET GOAL DIMENSIONS ---
     // Based on a 64px high goal centered vertically
-    constexpr float GOAL_TOP_Y = 412.f;    // 103px * 4
-    constexpr float GOAL_BOTTOM_Y = 668.f; // 167px * 4
+    constexpr float GOAL_TOP_Y = 415.f;
+    constexpr float GOAL_BOTTOM_Y = 665.f;
 }

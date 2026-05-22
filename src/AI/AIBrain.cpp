@@ -170,6 +170,10 @@ void AIBrain::executeAttackingOnBall() {
         float dy = bestPassTarget->getPosition().y - owner->getPosition().y;
         float dist = std::hypot(dx, dy);
 
+        if (targetBall) {
+            targetBall->setIntendedReceiver(bestPassTarget);
+        }
+
         owner->kickBall({(dx / dist) * 400.f, (dy / dist) * 400.f, 15.f});
 
         // Put passing on cooldown so they can't machine-gun it
@@ -194,7 +198,7 @@ void AIBrain::executeDefendingPressing() {
     float dist = std::hypot(carrier->getPosition().x - owner->getPosition().x,
                             carrier->getPosition().y - owner->getPosition().y);
 
-    if (dist < 80.f && owner->canTackle()) {
+    if (dist < 55.f && owner->canTackle()) {
 
         owner->attemptTackle(carrier);
 
