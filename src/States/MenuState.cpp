@@ -1,9 +1,10 @@
 #include "MenuState.h"
-#include "../Core/Config.h" // Assuming you have Config::CENTER_X here
+#include "../Core/Config.h"
 #include <SFML/Window/Keyboard.hpp>
 #include <iostream>
 #include "MatchState.h"
 #include "../Core/Game.h"
+#include "CareerStates/CareerMenuState.h"
 
 MenuState::MenuState(Game* game) : GameState(game), titleText(menuFont), bgSprite(bgTexture) {
     if (!menuFont.openFromFile("assets/font.ttf")) {
@@ -130,6 +131,7 @@ void MenuState::handleInput(const sf::Event& event) {
             // 1. MAIN MENU
             if (currentScreen == MenuScreen::Main) {
                 if (selectedIndex == 0) loadScreen(MenuScreen::CustomMatch);
+                else if (selectedIndex == 1) game->changeState(std::make_unique<CareerMenuState>(game));
                 else if (selectedIndex == 2) loadScreen(MenuScreen::Settings);
                 else if (selectedIndex == 3) game->closeApplication();
             }

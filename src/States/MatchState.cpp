@@ -7,6 +7,8 @@
 #include "GameOverState.h"
 #include "../Core/Game.h"
 #include "../States/MenuState.h"
+#include "../Career/CareerData.h"
+#include "CareerStates/PostMatchState.h"
 #include <iostream>
 
 MatchState::MatchState(Game* game, const MatchSettings& matchSettings) : GameState(game), settings(matchSettings) {
@@ -19,7 +21,6 @@ MatchState::MatchState(Game* game, const MatchSettings& matchSettings) : GameSta
     gameObjects.push_back(std::make_unique<Pitch>(settings.pitch));
     envManager = std::make_unique<EnvironmentManager>(settings.pitch, settings.weather);
 
-    // When creating the Ball and Entities, you can now pass a pointer to envManager so they can read the modifiers!
     auto ballPtr = std::make_unique<Ball>(Config::CENTER_X, Config::CENTER_Y, envManager.get());
     matchBall = ballPtr.get();
 
@@ -37,10 +38,21 @@ void MatchState::update(float dt) {
         return;
     }
     if (referee->updateClock(dt)) {
-        int finalHome = referee->getHomeScore();
-        int finalAway = referee->getAwayScore();
-
-        game->changeState(std::make_unique<GameOverState>(game, finalHome, finalAway));
+        if (settings.careerSave != nullptr) {
+            game->changeState(std::make_unique<PostMatchState>(
+                game,
+                settings.careerSave,
+                referee->getHomeScore(),
+                referee->getAwayScore()
+            ));
+        }
+        else {
+            game->changeState(std::make_unique<GameOverState>(
+                game,
+                referee->getHomeScore(),
+                referee->getAwayScore()
+            ));
+        }
         return;
     }
     matchHUD.updateTimer(referee->getTimeRemaining());
@@ -116,12 +128,24 @@ void MatchState::spawnTeams() {
     // A simple array of Y-offsets to space players out automatically
     std::vector<float> yOffsets = { 0.f, -300.f, 300.f, -150.f, 150.f };
 
-    // --- SPAWN HOME TEAM ---
+    std::vector<EntityStats> starterStats;
+    if (settings.careerSave != nullptr) {
+        for (const auto& p : settings.careerSave->roster) {
+            if (p.isStarter) {
+                starterStats.push_back(p.stats);
+            }
+        }
+    }
+
+    // SPAWN HOME TEAM
+
     for (int i = 0; i < settings.teamSize; ++i) {
         bool isHuman = (i < settings.homeHumans);
-
         EntityStats statsToUse = isHuman ? humanStats : aiStats;
 
+        if (settings.careerSave != nullptr && i < starterStats.size()) {
+            statsToUse = starterStats[i];
+        }
         float spawnX = Config::CENTER_X - 250.f; // Home side
         float spawnY = Config::CENTER_Y + (i < yOffsets.size() ? yOffsets[i] : 0.f);
 
@@ -136,7 +160,7 @@ void MatchState::spawnTeams() {
         gameObjects.push_back(std::move(player));
     }
 
-    // --- SPAWN AWAY TEAM ---
+    // SPAWN AWAY TEAM
     for (int i = 0; i < settings.teamSize; ++i) {
         bool isHuman = (i < settings.awayHumans);
 

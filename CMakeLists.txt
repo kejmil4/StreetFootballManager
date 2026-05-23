@@ -53,6 +53,21 @@ add_executable(StreetFootballManager
         src/Managers/EnvironmentManager.h
         src/UI/PauseMenu.cpp
         src/UI/PauseMenu.h
+        src/Career/CareerData.h
+        src/States/CareerStates/CareerMenuState.cpp
+        src/States/CareerStates/CareerMenuState.h
+        src/States/CareerStates/CareerHubState.cpp
+        src/States/CareerStates/CareerHubState.h
+        src/States/CareerStates/PostMatchState.cpp
+        src/States/CareerStates/PostMatchState.h
+        src/States/CareerStates/ShopState.cpp
+        src/States/CareerStates/ShopState.h
+        src/States/CareerStates/ClubState.cpp
+        src/States/CareerStates/ClubState.h
+        src/Career/LeagueSimulator.cpp
+        src/Career/LeagueSimulator.h
+        src/States/CareerStates/StandingsState.cpp
+        src/States/CareerStates/StandingsState.h
 )
 
 target_link_libraries(StreetFootballManager PRIVATE

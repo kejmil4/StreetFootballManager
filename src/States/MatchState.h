@@ -12,6 +12,7 @@
 #include <SFML/Graphics/Font.hpp>
 
 class EnvironmentManager;
+class CareerData;
 
 enum class PitchType { Grass, Asphalt, Mud };
 enum class WeatherType { Clear, Rain, Snow };
@@ -26,6 +27,8 @@ struct MatchSettings {
     WeatherType weather = WeatherType::Clear;
     Difficulty difficulty = Difficulty::Medium;
     int matchLengthSeconds = 180;
+
+    std::shared_ptr<CareerData> careerSave = nullptr;
 };
 
 class MatchState : public GameState {
