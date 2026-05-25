@@ -3,12 +3,13 @@
 #include "../../Core/Game.h"
 #include "../../Core/Config.h"
 #include "../../Career/LeagueSimulator.h"
+#include "CareerOverState.h"
 #include <iostream>
 #include <fstream>
 #include <string>
 
-PostMatchState::PostMatchState(Game* game, std::shared_ptr<CareerData> careerData, int homeScore, int awayScore)
-    : GameState(game), career(careerData), matchHomeScore(homeScore), matchAwayScore(awayScore), credEarned(0),
+PostMatchState::PostMatchState(Game* game, std::shared_ptr<CareerData> careerData, int homeScore, int awayScore, int oppId)
+    : GameState(game), career(careerData), matchHomeScore(homeScore), matchAwayScore(awayScore), opponentTeamId(oppId), credEarned(0),
       titleText(font), scoreText(font), rewardText(font), promptText(font)
 {
     if (!font.openFromFile("assets/font.ttf")) {
@@ -103,40 +104,42 @@ void PostMatchState::calculateRewards() {
             break;
         }
     }
+    LeagueSimulator::assignGoals(career->roster, matchHomeScore);
 
+
+    for (auto& team : career->leagueTable) {
+        if (team.id == opponentTeamId) {
+            LeagueSimulator::assignGoals(team.roster, matchAwayScore);
+            break;
+        }
+    }
     LeagueSimulator::simulateWeek(career, career->currentWeek);
 
     career->currentWeek += 1;
 
-    saveCareer();
+    if (career->currentWeek > 14) {
+
+    } else {
+        career->saveToFile();
+    }
+
 }
 
-void PostMatchState::saveCareer() {
-    // A simple text-based save file to persist your data!
-    std::ofstream saveFile("career_save.txt");
-    if (saveFile.is_open()) {
-        saveFile << career->teamName << "\n";
-        saveFile << career->streetCred << "\n";
-        saveFile << career->currentWeek << "\n";
-        // Later down the line, we will loop through career->roster and save their exact stats here too!
-        saveFile.close();
-        std::cout << "Game Saved Successfully to career_save.txt!\n";
-    } else {
-        std::cerr << "Error: Could not save game!\n";
-    }
-}
 
 void PostMatchState::handleInput(const sf::Event& event) {
     if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>()) {
         if (keyPressed->code == sf::Keyboard::Key::Enter || keyPressed->code == sf::Keyboard::Key::Space) {
-            // Boot back to the Hub, passing the updated career data!
-            game->changeState(std::make_unique<CareerHubState>(game, career));
+
+            if (career->currentWeek > 14) {
+                game->changeState(std::make_unique<CareerOverState>(game, career));
+            } else {
+                game->changeState(std::make_unique<CareerHubState>(game, career));
+            }
         }
     }
 }
 
 void PostMatchState::update(float dt) {
-    // The state is mostly static, no complex updates needed here for now
 }
 
 void PostMatchState::render(sf::RenderTarget& target) {

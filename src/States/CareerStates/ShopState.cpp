@@ -108,12 +108,7 @@ void ShopState::handleInput(const sf::Event& event) {
                     // 4. Force selection back to 0 so we don't point out of bounds
                     selectedIndex = 0;
 
-                    // 5. Quick Auto-Save! (Same logic as PostMatchState)
-                    std::ofstream saveFile("Saves/career_save.txt");
-                    if (saveFile.is_open()) {
-                        saveFile << career->teamName << "\n" << career->streetCred << "\n" << career->currentWeek << "\n";
-                        saveFile.close();
-                    }
+                    career->saveToFile();
 
                     refreshUI(); // Update the screen to show lower money and new roster size!
                 }

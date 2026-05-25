@@ -11,6 +11,7 @@ private:
     int matchHomeScore;
     int matchAwayScore;
     int credEarned;
+    int opponentTeamId;
 
     sf::Font font;
     sf::Text titleText;
@@ -22,7 +23,7 @@ private:
     void saveCareer();
 
 public:
-    PostMatchState(Game* game, std::shared_ptr<CareerData> careerData, int homeScore, int awayScore);
+    PostMatchState(Game* game, std::shared_ptr<CareerData> careerData, int homeScore, int awayScore, int oppId);
     ~PostMatchState() override = default;
 
     void handleInput(const sf::Event& event) override;

@@ -19,4 +19,24 @@ namespace Config {
     // Based on a 64px high goal centered vertically
     constexpr float GOAL_TOP_Y = 415.f;
     constexpr float GOAL_BOTTOM_Y = 665.f;
+
+
+    struct PlayerBinds {
+        sf::Keyboard::Key up, down, left, right;
+        sf::Keyboard::Key passSwitch;   // Offense: Pass | Defense: Switch Player
+        sf::Keyboard::Key shootTackle;  // Offense: Shoot | Defense: Tackle
+        sf::Keyboard::Key lobModifier;  // Modifies pass/shoot into a lob/chip
+    };
+
+    // Player 1 Defaults (WASD, E, Space, LShift)
+    inline PlayerBinds p1Binds = {
+        sf::Keyboard::Key::W, sf::Keyboard::Key::S, sf::Keyboard::Key::A, sf::Keyboard::Key::D,
+        sf::Keyboard::Key::E, sf::Keyboard::Key::Space, sf::Keyboard::Key::LShift
+    };
+
+    // Player 2 Defaults (Arrows, Period, Enter, RShift)
+    inline PlayerBinds p2Binds = {
+        sf::Keyboard::Key::Up, sf::Keyboard::Key::Down, sf::Keyboard::Key::Left, sf::Keyboard::Key::Right,
+        sf::Keyboard::Key::Period, sf::Keyboard::Key::Enter, sf::Keyboard::Key::RShift
+    };
 }

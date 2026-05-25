@@ -29,6 +29,10 @@ struct MatchSettings {
     int matchLengthSeconds = 180;
 
     std::shared_ptr<CareerData> careerSave = nullptr;
+
+    int opponentTeamId = -1;
+
+    int logoId = -1;
 };
 
 class MatchState : public GameState {

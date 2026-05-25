@@ -5,7 +5,10 @@
 #include "../../Core/Config.h"
 #include "../../Career/CareerData.h"
 #include "../../Career/LeagueSimulator.h"
+#include "CareerSetupState.h"
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 
 CareerMenuState::CareerMenuState(Game* game) : GameState(game), titleText(font), selectedIndex(0) {
     if (!font.openFromFile("assets/font.ttf")) {
@@ -42,16 +45,32 @@ void CareerMenuState::handleInput(const sf::Event& event) {
             if (selectedIndex < menuOptions.size() - 1) selectedIndex++;
         }
         else if (keyPressed->code == sf::Keyboard::Key::Enter || keyPressed->code == sf::Keyboard::Key::Space) {
-            if (selectedIndex == 0) {
-                // TODO: Load existing save directly to Hub
+            if (selectedIndex == 0) { // Continue
+
+                // 1. Find the first available save file (You can build a full list menu later!)
+                std::string fileToLoad = "";
+
+                for (const auto& entry : std::filesystem::directory_iterator("Saves")) {
+                    if (entry.path().extension() == ".txt") {
+                        fileToLoad = entry.path().string();
+                        break; // Grab the first one we find for now
+                    }
+                }
+
+                if (!fileToLoad.empty()) {
+                    auto loadedCareer = std::make_shared<CareerData>();
+                    if (loadedCareer->loadFromFile(fileToLoad)) {
+                        std::cout << "Successfully loaded: " << loadedCareer->teamName << "\n";
+                        game->changeState(std::make_unique<CareerHubState>(game, loadedCareer));
+                    } else {
+                        std::cerr << "Save file corrupted!\n";
+                    }
+                } else {
+                    std::cout << "No save files found in Saves/ directory!\n";
+                }
             }
             else if (selectedIndex == 1) { // New Career
-                auto newCareer = std::make_shared<CareerData>();
-                newCareer->generateNewCareer();
-
-                LeagueSimulator::initializeLeague(newCareer, 8);
-
-                game->changeState(std::make_unique<CareerHubState>(game, newCareer));
+                game->changeState(std::make_unique<CareerSetupState>(game));
             }
             else if (selectedIndex == 2) {
                 // TODO: Open Save Slot Menu

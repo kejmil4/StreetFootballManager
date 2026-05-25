@@ -18,7 +18,7 @@ MatchState::MatchState(Game* game, const MatchSettings& matchSettings) : GameSta
     pauseMenu = std::make_unique<PauseMenu>();
 
     // 3. Spawn the Pitch and Ball
-    gameObjects.push_back(std::make_unique<Pitch>(settings.pitch));
+    gameObjects.push_back(std::make_unique<Pitch>(settings.pitch, settings.logoId));
     envManager = std::make_unique<EnvironmentManager>(settings.pitch, settings.weather);
 
     auto ballPtr = std::make_unique<Ball>(Config::CENTER_X, Config::CENTER_Y, envManager.get());
@@ -43,7 +43,8 @@ void MatchState::update(float dt) {
                 game,
                 settings.careerSave,
                 referee->getHomeScore(),
-                referee->getAwayScore()
+                referee->getAwayScore(),
+                settings.opponentTeamId
             ));
         }
         else {
@@ -160,11 +161,28 @@ void MatchState::spawnTeams() {
         gameObjects.push_back(std::move(player));
     }
 
+    std::vector<EntityStats> aiStarterStats;
+    if (settings.careerSave != nullptr && settings.opponentTeamId != -1) {
+        // Find the opponent team in the league table
+        for (const auto& team : settings.careerSave->leagueTable) {
+            if (team.id == settings.opponentTeamId) {
+                for (const auto& p : team.roster) {
+                    if (p.isStarter) aiStarterStats.push_back(p.stats);
+                }
+                break;
+            }
+        }
+    }
+
     // SPAWN AWAY TEAM
     for (int i = 0; i < settings.teamSize; ++i) {
         bool isHuman = (i < settings.awayHumans);
 
         EntityStats statsToUse = isHuman ? humanStats : aiStats;
+
+        if (settings.careerSave != nullptr && i < aiStarterStats.size()) {
+            statsToUse = aiStarterStats[i];
+        }
 
         float spawnX = Config::CENTER_X + 250.f; // Away side
         float spawnY = Config::CENTER_Y + (i < yOffsets.size() ? yOffsets[i] : 0.f);

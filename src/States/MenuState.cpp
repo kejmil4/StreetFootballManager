@@ -3,6 +3,7 @@
 #include <SFML/Window/Keyboard.hpp>
 #include <iostream>
 #include "MatchState.h"
+#include "SettingsState.h"
 #include "../Core/Game.h"
 #include "CareerStates/CareerMenuState.h"
 
@@ -154,6 +155,7 @@ void MenuState::handleInput(const sf::Event& event) {
             }
             // 4. SETTINGS MENU
             else if (currentScreen == MenuScreen::Settings) {
+                if (selectedIndex == 0) game->changeState(std::make_unique<SettingsState>(game));
                 if (selectedIndex == 1) loadScreen(MenuScreen::Main);
             }
             // 5. MATCH SETUP (LAUNCH!)

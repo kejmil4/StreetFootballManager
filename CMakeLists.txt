@@ -68,6 +68,15 @@ add_executable(StreetFootballManager
         src/Career/LeagueSimulator.h
         src/States/CareerStates/StandingsState.cpp
         src/States/CareerStates/StandingsState.h
+        src/States/CareerStates/TopScorersState.cpp
+        src/States/CareerStates/TopScorersState.h
+        src/States/CareerStates/CareerSetupState.cpp
+        src/States/CareerStates/CareerSetupState.h
+        src/States/CareerStates/CareerOverState.cpp
+        src/States/CareerStates/CareerOverState.h
+        src/Career/CareerData.cpp
+        src/States/SettingsState.cpp
+        src/States/SettingsState.h
 )
 
 target_link_libraries(StreetFootballManager PRIVATE

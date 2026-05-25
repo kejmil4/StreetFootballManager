@@ -15,26 +15,23 @@ void HumanController::update(float dt) {
     bool passKey, shootKey, modKey;
 
     if (id == ControllerID::Player1) {
-        // PLAYER 1: WASD, E, Space, LShift
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W)) moveDir.y -= 1.f;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S)) moveDir.y += 1.f;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) moveDir.x -= 1.f;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) moveDir.x += 1.f;
+        if (sf::Keyboard::isKeyPressed(Config::p1Binds.up)) moveDir.y -= 1.f;
+        if (sf::Keyboard::isKeyPressed(Config::p1Binds.down)) moveDir.y += 1.f;
+        if (sf::Keyboard::isKeyPressed(Config::p1Binds.left)) moveDir.x -= 1.f;
+        if (sf::Keyboard::isKeyPressed(Config::p1Binds.right)) moveDir.x += 1.f;
 
-        passKey  = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::E);
-        shootKey = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space);
-        modKey   = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift);
-    }
-    else {
-        // PLAYER 2: Arrows, Period (.), Enter, RShift
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up)) moveDir.y -= 1.f;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Down)) moveDir.y += 1.f;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left)) moveDir.x -= 1.f;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right)) moveDir.x += 1.f;
+        passKey  = sf::Keyboard::isKeyPressed(Config::p1Binds.passSwitch);
+        shootKey = sf::Keyboard::isKeyPressed(Config::p1Binds.shootTackle);
+        modKey   = sf::Keyboard::isKeyPressed(Config::p1Binds.lobModifier);
+    } else {
+        if (sf::Keyboard::isKeyPressed(Config::p2Binds.up)) moveDir.y -= 1.f;
+        if (sf::Keyboard::isKeyPressed(Config::p2Binds.down)) moveDir.y += 1.f;
+        if (sf::Keyboard::isKeyPressed(Config::p2Binds.left)) moveDir.x -= 1.f;
+        if (sf::Keyboard::isKeyPressed(Config::p2Binds.right)) moveDir.x += 1.f;
 
-        passKey  = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Period);
-        shootKey = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Enter);
-        modKey   = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::RShift);
+        passKey  = sf::Keyboard::isKeyPressed(Config::p2Binds.passSwitch);
+        shootKey = sf::Keyboard::isKeyPressed(Config::p2Binds.shootTackle);
+        modKey   = sf::Keyboard::isKeyPressed(Config::p2Binds.lobModifier);
     }
 
     // Normalize movement

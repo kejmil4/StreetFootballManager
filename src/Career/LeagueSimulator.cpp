@@ -2,6 +2,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <algorithm>
+#include <random>
+#include <chrono>
 
 void LeagueSimulator::initializeLeague(std::shared_ptr<CareerData> career, int numTeams) {
     career->leagueTable.clear();
@@ -24,11 +26,33 @@ void LeagueSimulator::initializeLeague(std::shared_ptr<CareerData> career, int n
     for (int i = 1; i < numTeams; ++i) {
         LeagueTeam aiTeam;
         aiTeam.id = i;
-        aiTeam.name = aiNames[i % aiNames.size()];
 
-        // Randomize how good this AI team is (80 is weak, 130 is very strong)
+        int arrayIndex = (i - 1) % aiNames.size();
+
+        aiTeam.name = aiNames[arrayIndex];
+
+        aiTeam.homePitch = static_cast<PitchType>(rand() % 3);
+
+        aiTeam.logoId = i - 1;
+
         float power = 80.f + (rand() % 50);
         aiTeam.teamAverageStats = {power, power, power, power, power};
+
+        for (int p = 0; p < 3; ++p) { // Generate 3 starters for the AI
+            CareerPlayer aiPlayer;
+            // Name them after their team so you recognize them! (e.g., "Viper 1")
+            aiPlayer.name = aiTeam.name.substr(0, aiTeam.name.find(' ')) + " " + std::to_string(p + 1);
+
+            // Randomize their specific stats around the team's average power
+            aiPlayer.stats.speed = power + (rand() % 30 - 15);
+            aiPlayer.stats.shooting = power + (rand() % 30 - 15);
+            aiPlayer.stats.passing = power + (rand() % 30 - 15);
+            aiPlayer.stats.tackling = power + (rand() % 30 - 15);
+            aiPlayer.stats.maxStamina = power + (rand() % 30 - 15);
+
+            aiPlayer.isStarter = true; // AI players always start
+            aiTeam.roster.push_back(aiPlayer);
+        }
 
         career->leagueTable.push_back(aiTeam);
     }
@@ -49,7 +73,6 @@ void LeagueSimulator::initializeLeague(std::shared_ptr<CareerData> career, int n
             career->schedule.push_back({currentWeek, home, away});
         }
 
-        // Rotate teams (keep index 0 fixed)
         int lastTeam = teamIds.back();
         teamIds.pop_back();
         teamIds.insert(teamIds.begin() + 1, lastTeam);
@@ -62,11 +85,27 @@ void LeagueSimulator::initializeLeague(std::shared_ptr<CareerData> career, int n
     for (int i = 0; i < (totalRounds * matchesPerRound); ++i) {
         MatchFixture reverseFixture = career->schedule[i];
         reverseFixture.week = career->schedule[i].week + firstHalfWeeks;
-        // Swap Home and Away
         int temp = reverseFixture.homeTeamId;
         reverseFixture.homeTeamId = reverseFixture.awayTeamId;
         reverseFixture.awayTeamId = temp;
         career->schedule.push_back(reverseFixture);
+    }
+    // SHUFFLE THE WEEKS
+    int totalWeeks = (numTeams - 1) * 2;
+    std::vector<std::vector<MatchFixture>> groupedWeeks(totalWeeks);
+    for (const auto& match : career->schedule) {
+        groupedWeeks[match.week - 1].push_back(match);
+    }
+
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::shuffle(groupedWeeks.begin(), groupedWeeks.end(), std::default_random_engine(seed));
+
+    career->schedule.clear();
+    for (int w = 0; w < groupedWeeks.size(); ++w) {
+        for (auto& match : groupedWeeks[w]) {
+            match.week = w + 1;
+            career->schedule.push_back(match);
+        }
     }
 }
 
@@ -75,19 +114,29 @@ void LeagueSimulator::simulateWeek(std::shared_ptr<CareerData> career, int week)
         // Find matches for the current week that are NOT played by the player (ID 0)
         if (match.week == week && !match.isPlayed && match.homeTeamId != 0 && match.awayTeamId != 0) {
 
-            // Grab references to the teams
             auto& homeTeam = career->leagueTable[match.homeTeamId];
             auto& awayTeam = career->leagueTable[match.awayTeamId];
 
-            // Simple Simulation Math based on Team Stats + RNG
-            int homeAdvantage = 10; // Home teams get a slight boost
-            float homePower = homeTeam.teamAverageStats.speed + homeAdvantage + (rand() % 40);
-            float awayPower = awayTeam.teamAverageStats.speed + (rand() % 40);
+            int homeAdvantage = 15;
+            float homePower = homeTeam.teamAverageStats.speed + homeAdvantage + (rand() % 50);
+            float awayPower = awayTeam.teamAverageStats.speed + (rand() % 50);
 
-            // Calculate goals
-            match.homeScore = (homePower > awayPower) ? (rand() % 4) + 1 : (rand() % 2);
-            match.awayScore = (awayPower > homePower) ? (rand() % 4) + 1 : (rand() % 2);
+            match.homeScore = (rand() % 3) + 1;
+            match.awayScore = (rand() % 3) + 1;
+
+            if (homePower > awayPower) {
+                match.homeScore += (rand() % 3) + 1;
+            } else if (awayPower > homePower) {
+                match.awayScore += (rand() % 3) + 1;
+            } else {
+                match.homeScore += 1;
+                match.awayScore += 1;
+            }
+
             match.isPlayed = true;
+
+            assignGoals(homeTeam.roster, match.homeScore);
+            assignGoals(awayTeam.roster, match.awayScore);
 
             // Update Standings Logic
             homeTeam.goalsFor += match.homeScore;
@@ -120,4 +169,69 @@ void LeagueSimulator::sortStandings(std::shared_ptr<CareerData> career) {
         if (a.points != b.points) return a.points > b.points;
         return a.goalDifference() > b.goalDifference();
     });
+}
+
+void LeagueSimulator::assignGoals(std::vector<CareerPlayer>& roster, int goalsToAssign) {
+    if (goalsToAssign <= 0) return;
+
+    // 1. Find only the players who actually played (Starters)
+    std::vector<CareerPlayer*> starters;
+    float totalShootingWeight = 0.f;
+
+    for (auto& player : roster) {
+        if (player.isStarter) {
+            starters.push_back(&player);
+            totalShootingWeight += player.stats.shooting;
+        }
+    }
+
+    if (starters.empty()) return; // Safety check
+
+    // 2. Assign each goal using a weighted random selection!
+    for (int i = 0; i < goalsToAssign; ++i) {
+        // Pick a random number between 0 and the total shooting stats of the team
+        float randomRoll = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * totalShootingWeight;
+
+        float currentWeight = 0.f;
+        for (auto* player : starters) {
+            currentWeight += player->stats.shooting;
+            if (randomRoll <= currentWeight) {
+                player->goalsScored += 1;
+                break; // Goal assigned, move to the next goal!
+            }
+        }
+    }
+}
+
+std::vector<ScorerRecord> LeagueSimulator::getTopScorers(std::shared_ptr<CareerData> career, int limit) {
+    std::vector<ScorerRecord> allScorers;
+
+    // 1. Grab the Player's team
+    for (const auto& p : career->roster) {
+        if (p.goalsScored > 0) {
+            allScorers.push_back({p.name, career->teamName, p.goalsScored});
+        }
+    }
+
+    // 2. Grab all the AI teams
+    for (const auto& team : career->leagueTable) {
+        if (team.id == 0) continue; // Skip player team (already did it above)
+        for (const auto& p : team.roster) {
+            if (p.goalsScored > 0) {
+                allScorers.push_back({p.name, team.name, p.goalsScored});
+            }
+        }
+    }
+
+    // 3. Sort by goals descending
+    std::sort(allScorers.begin(), allScorers.end(), [](const ScorerRecord& a, const ScorerRecord& b) {
+        return a.goals > b.goals;
+    });
+
+    // 4. Trim to the limit (e.g., Top 10)
+    if (allScorers.size() > limit) {
+        allScorers.resize(limit);
+    }
+
+    return allScorers;
 }

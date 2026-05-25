@@ -2,12 +2,16 @@
 #include <string>
 #include <vector>
 #include "../Entities/Entity.h"
+#include "../Entities/Pitch.h"
+#include <algorithm>
+#include <fstream>
 
 struct CareerPlayer {
     std::string name;
     EntityStats stats;
     int cost;
     bool isStarter = false;
+    int goalsScored = 0;
 
     void calculateCost() {
         float totalStats = stats.speed + stats.shooting + stats.passing + stats.tackling + stats.maxStamina;
@@ -20,7 +24,11 @@ struct LeagueTeam {
     std::string name;
     EntityStats teamAverageStats;
 
-    // Standings tracking
+    std::vector<CareerPlayer> roster;
+
+    PitchType homePitch;
+    int logoId;
+
     int points = 0;
     int wins = 0;
     int draws = 0;
@@ -49,15 +57,19 @@ public:
     std::vector<LeagueTeam> leagueTable;
     std::vector<MatchFixture> schedule;
 
-    void generateNewCareer() {
-        teamName = "The Rookies";
-        streetCred = 500;
-        currentWeek = 1;
-        roster.clear();
+    PitchType homePitch;
+    int logoId;
 
-        EntityStats baseline = {100.f, 100.f, 100.f, 100.f, 100.f};
-        roster.push_back({"Street Kid A", baseline, 250, true});
-        roster.push_back({"Street Kid B", baseline, 250, true});
-        roster.push_back({"Street Kid C", baseline, 250, true});
+
+    std::string getSaveFileName() const {
+        std::string safeName = teamName;
+        std::replace(safeName.begin(), safeName.end(), ' ', '_');
+        return "Saves/" + safeName + ".txt";
     }
+
+    bool saveToFile();
+    bool loadFromFile(const std::string& filepath);
+private:
+    void savePlayer(std::ofstream& out, const CareerPlayer& p);
+    void loadPlayer(std::ifstream& in, CareerPlayer& p);
 };
