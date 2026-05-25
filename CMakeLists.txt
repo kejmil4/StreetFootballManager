@@ -77,6 +77,12 @@ add_executable(StreetFootballManager
         src/Career/CareerData.cpp
         src/States/SettingsState.cpp
         src/States/SettingsState.h
+        src/Managers/AudioManager.cpp
+        src/Managers/AudioManager.h
+        src/States/AudioSettingsState.cpp
+        src/States/AudioSettingsState.h
+        src/States/CareerStates/LoadCareerState.cpp
+        src/States/CareerStates/LoadCareerState.h
 )
 
 target_link_libraries(StreetFootballManager PRIVATE

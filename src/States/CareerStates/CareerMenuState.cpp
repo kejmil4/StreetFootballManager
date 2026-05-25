@@ -5,6 +5,7 @@
 #include "../../Core/Config.h"
 #include "../../Career/CareerData.h"
 #include "../../Career/LeagueSimulator.h"
+#include "LoadCareerState.h"
 #include "CareerSetupState.h"
 #include <iostream>
 #include <fstream>
@@ -22,7 +23,7 @@ CareerMenuState::CareerMenuState(Game* game) : GameState(game), titleText(font),
     titleText.setOrigin({titleBounds.size.x / 2.0f, titleBounds.size.y / 2.0f});
     titleText.setPosition({Config::CENTER_X, 200.f});
 
-    std::vector<std::string> optionsText = {"Continue (WIP)", "New Career", "Load Career (WIP)", "Back"};
+    std::vector<std::string> optionsText = {"Continue", "New Career", "Load Career", "Back"};
     for (int i = 0; i < optionsText.size(); ++i) {
         sf::Text option(font);
         option.setString(optionsText[i]);
@@ -46,21 +47,27 @@ void CareerMenuState::handleInput(const sf::Event& event) {
         }
         else if (keyPressed->code == sf::Keyboard::Key::Enter || keyPressed->code == sf::Keyboard::Key::Space) {
             if (selectedIndex == 0) { // Continue
-
-                // 1. Find the first available save file (You can build a full list menu later!)
                 std::string fileToLoad = "";
 
-                for (const auto& entry : std::filesystem::directory_iterator("Saves")) {
-                    if (entry.path().extension() == ".txt") {
-                        fileToLoad = entry.path().string();
-                        break; // Grab the first one we find for now
+                if (std::filesystem::exists("Saves") && std::filesystem::is_directory("Saves")) {
+                    // Track the newest file
+                    auto latestTime = std::filesystem::file_time_type::min();
+
+                    for (const auto& entry : std::filesystem::directory_iterator("Saves")) {
+                        if (entry.path().extension() == ".txt") {
+                            // Compare timestamps!
+                            auto ftime = std::filesystem::last_write_time(entry);
+                            if (ftime > latestTime) {
+                                latestTime = ftime;
+                                fileToLoad = entry.path().string();
+                            }
+                        }
                     }
                 }
 
                 if (!fileToLoad.empty()) {
                     auto loadedCareer = std::make_shared<CareerData>();
                     if (loadedCareer->loadFromFile(fileToLoad)) {
-                        std::cout << "Successfully loaded: " << loadedCareer->teamName << "\n";
                         game->changeState(std::make_unique<CareerHubState>(game, loadedCareer));
                     } else {
                         std::cerr << "Save file corrupted!\n";
@@ -73,7 +80,7 @@ void CareerMenuState::handleInput(const sf::Event& event) {
                 game->changeState(std::make_unique<CareerSetupState>(game));
             }
             else if (selectedIndex == 2) {
-                // TODO: Open Save Slot Menu
+                game->changeState(std::make_unique<LoadCareerState>(game));
             }
             else if (selectedIndex == 3) { // Back
                 game->changeState(std::make_unique<MenuState>(game));

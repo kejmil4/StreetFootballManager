@@ -11,7 +11,7 @@ private:
     std::vector<sf::Text> menuOptions;
 
     int selectedIndex;
-    bool isBinding; // Are we waiting for the user to press a new key?
+    bool isBinding;
 
     // Pointers that point directly to the keys in Config.h!
     sf::Keyboard::Key* bindPointers[14];

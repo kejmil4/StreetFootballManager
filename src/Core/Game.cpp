@@ -7,6 +7,20 @@ Game::Game() {
     window.create(sf::VideoMode({Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT}), "Street Football Manager", sf::Style::Default);
     window.setFramerateLimit(60);
 
+    Config::loadSettings();
+
+    audioManager = std::make_unique<AudioManager>();
+
+    audioManager->loadSound("whistle", "assets/music/whistle.wav");
+    audioManager->loadSound("tackle", "assets/music/thud.wav");
+    audioManager->loadSound("goal", "assets/music/goalCheer.wav");
+
+    std::vector<std::string> myTracks = {
+        "assets/music/song1.mp3",
+        "assets/music/song2.mp3"
+    };
+    audioManager->playPlaylist(myTracks, true);
+
     currentState = std::make_unique<MenuState>(this);
 
 }
@@ -24,6 +38,7 @@ void Game::run() {
         processEvents();
         update(dt);
         render();
+        audioManager->update();
     }
 }
 

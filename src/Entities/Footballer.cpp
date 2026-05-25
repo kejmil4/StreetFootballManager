@@ -26,6 +26,7 @@ Footballer::~Footballer() = default;
 
 void Footballer::makeHuman(ControllerID id) {
     isHuman = true;
+    humanID = id;
     if (humanInput) humanInput->setControllerID(id);
 }
 

@@ -12,7 +12,7 @@
 #include <iostream>
 
 MatchState::MatchState(Game* game, const MatchSettings& matchSettings) : GameState(game), settings(matchSettings) {
-    referee = std::make_unique<Referee>(static_cast<float>(settings.matchLengthSeconds));
+    referee = std::make_unique<Referee>(game, static_cast<float>(settings.matchLengthSeconds));
     teamManager = std::make_unique<TeamManager>();
 
     pauseMenu = std::make_unique<PauseMenu>();

@@ -1,6 +1,7 @@
 #include "HUD.h"
 #include "../Entities/Footballer.h"
 #include "../Core/Config.h"
+#include "../Controllers/HumanController.h"
 #include <iostream>
 
 #include "Entities/Footballer.h"
@@ -60,6 +61,25 @@ void HUD::render(sf::RenderTarget& target, const std::vector<std::unique_ptr<Gam
 
             target.draw(bgBar);
             target.draw(fgBar);
+
+            if (player->getIsHuman()) {
+                sf::CircleShape arrow(12.f, 3);
+                arrow.setOrigin({12.f, 12.f});
+                arrow.setRotation(sf::degrees(180.f));
+                arrow.setPosition({player->getPosition().x, player->getPosition().y - 110.f});
+
+                // Check which controller this player has
+                if (player->getHumanID() == ControllerID::Player1) {
+                    arrow.setFillColor(sf::Color(255, 50, 50)); // P1: Bright Red
+                } else {
+                    arrow.setFillColor(sf::Color(50, 150, 255)); // P2: Bright Blue
+                }
+
+                arrow.setOutlineColor(sf::Color::Black);
+                arrow.setOutlineThickness(2.f);
+
+                target.draw(arrow);
+            }
         }
     }
 }

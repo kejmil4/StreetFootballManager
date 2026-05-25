@@ -5,8 +5,12 @@
 #include <vector>
 #include <memory>
 
+class Game;
+
 class Referee {
 private:
+    Game* game;
+
     float matchDuration;
     float timeRemaining;
 
@@ -14,7 +18,7 @@ private:
     int awayScore = 0;
 
 public:
-    Referee(float duration);
+    Referee(Game* game, float duration);
     ~Referee() = default;
 
     // Returns true if the match is over!

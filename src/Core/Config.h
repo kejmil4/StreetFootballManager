@@ -1,4 +1,7 @@
 #pragma once
+#include <SFML/Window/Keyboard.hpp>
+#include <fstream>
+#include <iostream>
 
 namespace Config {
     constexpr unsigned int WINDOW_WIDTH = 1920;
@@ -39,4 +42,68 @@ namespace Config {
         sf::Keyboard::Key::Up, sf::Keyboard::Key::Down, sf::Keyboard::Key::Left, sf::Keyboard::Key::Right,
         sf::Keyboard::Key::Period, sf::Keyboard::Key::Enter, sf::Keyboard::Key::RShift
     };
+
+    // Volumes go from 0.0f to 100.0f
+    inline float masterVolume = 100.f;
+    inline float musicVolume  = 50.f;
+    inline float sfxVolume    = 80.f;
+
+
+    inline void saveSettings() {
+        std::ofstream file("settings.txt");
+        if (file.is_open()) {
+            file << masterVolume << "\n";
+            file << musicVolume << "\n";
+            file << sfxVolume << "\n";
+
+            file << static_cast<int>(p1Binds.up) << "\n";
+            file << static_cast<int>(p1Binds.down) << "\n";
+            file << static_cast<int>(p1Binds.left) << "\n";
+            file << static_cast<int>(p1Binds.right) << "\n";
+            file << static_cast<int>(p1Binds.passSwitch) << "\n";
+            file << static_cast<int>(p1Binds.shootTackle) << "\n";
+            file << static_cast<int>(p1Binds.lobModifier) << "\n";
+
+            file << static_cast<int>(p2Binds.up) << "\n";
+            file << static_cast<int>(p2Binds.down) << "\n";
+            file << static_cast<int>(p2Binds.left) << "\n";
+            file << static_cast<int>(p2Binds.right) << "\n";
+            file << static_cast<int>(p2Binds.passSwitch) << "\n";
+            file << static_cast<int>(p2Binds.shootTackle) << "\n";
+            file << static_cast<int>(p2Binds.lobModifier) << "\n";
+
+            file.close();
+        } else {
+            std::cerr << "Failed to save settings.txt!\n";
+        }
+    }
+
+    inline void loadSettings() {
+        std::ifstream file("settings.txt");
+
+        if (file.is_open()) {
+            file >> masterVolume;
+            file >> musicVolume;
+            file >> sfxVolume;
+
+            int key;
+            file >> key; p1Binds.up = static_cast<sf::Keyboard::Key>(key);
+            file >> key; p1Binds.down = static_cast<sf::Keyboard::Key>(key);
+            file >> key; p1Binds.left = static_cast<sf::Keyboard::Key>(key);
+            file >> key; p1Binds.right = static_cast<sf::Keyboard::Key>(key);
+            file >> key; p1Binds.passSwitch = static_cast<sf::Keyboard::Key>(key);
+            file >> key; p1Binds.shootTackle = static_cast<sf::Keyboard::Key>(key);
+            file >> key; p1Binds.lobModifier = static_cast<sf::Keyboard::Key>(key);
+
+            file >> key; p2Binds.up = static_cast<sf::Keyboard::Key>(key);
+            file >> key; p2Binds.down = static_cast<sf::Keyboard::Key>(key);
+            file >> key; p2Binds.left = static_cast<sf::Keyboard::Key>(key);
+            file >> key; p2Binds.right = static_cast<sf::Keyboard::Key>(key);
+            file >> key; p2Binds.passSwitch = static_cast<sf::Keyboard::Key>(key);
+            file >> key; p2Binds.shootTackle = static_cast<sf::Keyboard::Key>(key);
+            file >> key; p2Binds.lobModifier = static_cast<sf::Keyboard::Key>(key);
+
+            file.close();
+        }
+    }
 }

@@ -8,7 +8,6 @@
 #include <SFML/System/Vector2.hpp>
 #include <SFML/System/Vector3.hpp>
 
-// Forward declaration of our new AI Brain
 class AIBrain;
 class HumanController;
 
@@ -17,7 +16,6 @@ class Footballer : public Entity {
 private:
     bool isHuman;
 
-    // --- The Puppet Masters ---
 
     std::unique_ptr<AIBrain> brain;
     std::unique_ptr<FootballerAnimator> animator;
@@ -29,10 +27,11 @@ private:
 
     TeamManager* teamManager = nullptr;
 
-    // --- Movement & AI Data ---
     sf::Vector2f targetPos;
 
     float possessionCooldown = 0.f;
+
+    ControllerID humanID = ControllerID::Player1;
 
 public:
     Footballer(float x, float y, const EntityStats& baseStats, Ball* ball, Team teamAlignment, const std::vector<std::unique_ptr<GameObject>>* env, bool startsAsHuman);
@@ -44,6 +43,7 @@ public:
     bool getIsHuman() const { return isHuman; }
     void makeHuman(ControllerID id = ControllerID::Player1);
     void makeAI();
+    ControllerID getHumanID() const { return humanID; }
 
     // --- AI Puppet Controls ---
     void setTargetPos(sf::Vector2f newPos) { targetPos = newPos; }

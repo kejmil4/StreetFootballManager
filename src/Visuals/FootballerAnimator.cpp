@@ -87,8 +87,4 @@ void FootballerAnimator::update(float dt, sf::Vector2f velocity, sf::Sprite& tar
             facingDirection = 1.f;
         }
     }
-
-    // 3. Human vs AI highlighting
-    if (isHuman) targetSprite.setColor(sf::Color::White);
-    else targetSprite.setColor(sf::Color(200, 200, 200)); // Slightly darker for bots
 }

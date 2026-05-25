@@ -1,8 +1,9 @@
 #include "Referee.h"
-#include "../Core/Config.h" // Assuming this holds your pitch dimensions
+#include "../Core/Config.h"
+#include "../Core/Game.h"
 #include <iostream>
 
-Referee::Referee(float duration) : matchDuration(duration), timeRemaining(duration){}
+Referee::Referee(Game* game, float duration) : game(game) , matchDuration(duration), timeRemaining(duration){}
 
 bool Referee::updateClock(float dt) {
     timeRemaining -= dt;
@@ -17,13 +18,15 @@ bool Referee::checkGoals(Ball* matchBall) {
     // Check Left Goal (Away Team scores)
     if (ballPos.x < Config::PITCH_LEFT_X) {
         awayScore++;
-        std::cout << "GOAL for Away Team!\n";
+        game->getAudio()->playSound("goal");
+        game->getAudio()->playSound("whistle");
         return true;
     }
     // Check Right Goal (Home Team scores)
     else if (ballPos.x > Config::PITCH_RIGHT_X) {
         homeScore++;
-        std::cout << "GOAL for Home Team!\n";
+        game->getAudio()->playSound("goal");
+        game->getAudio()->playSound("whistle");
         return true;
     }
 

@@ -56,24 +56,36 @@ void HumanController::update(float dt) {
     // ==========================================
     if (passKey && actionCooldown <= 0.f) {
         actionCooldown = 0.3f;
+            if (owner->getPossession()) {
+            // 1. Determine the exact direction the player is holding
+            sf::Vector2f aimDir = moveDir;
 
-        if (owner->getPossession()) {
-            // OFFENSE: Pass the ball
+            // If they are standing completely still, default to kicking forward!
+            if (aimDir.x == 0.f && aimDir.y == 0.f) {
+                // Assuming Team 0 attacks Right, Team 1 attacks Left
+                aimDir.x = (owner->getFacingDirection() == 0) ? 1.f : -1.f;
+            } else {
+                // Normalize the aim direction
+                float len = std::hypot(aimDir.x, aimDir.y);
+                aimDir.x /= len;
+                aimDir.y /= len;
+            }
+
+            // 2. Try to find a teammate using your dot product rule
             Footballer* bestTarget = findBestPassTarget(aimDir);
-            if (bestTarget) {
 
+            if (bestTarget) {
+                // --- NEW LOGIC: PREDICTIVE TARGETED PASS ---
                 float initialDx = bestTarget->getPosition().x - owner->getPosition().x;
                 float initialDy = bestTarget->getPosition().y - owner->getPosition().y;
                 float initialDist = std::hypot(initialDx, initialDy);
 
-                // 1. CHECK FOR LOB MODIFIER
+                // Check for Lob Modifier
                 bool isLob = modKey;
-
-                // Adjust speeds: High passes hang in the air longer, so we adjust horizontal travel
                 float passSpeed = isLob ? 380.f : 450.f;
                 float launchHeight = isLob ? 320.f : 15.f;
 
-                // 2. PREDICTIVE MATH (Leading the receiver)
+                // Predictive Math (Leading the receiver)
                 float timeToReach = initialDist / passSpeed;
                 sf::Vector2f targetVel = bestTarget->getVelocity();
                 sf::Vector2f predictedPos = bestTarget->getPosition();
@@ -83,18 +95,77 @@ void HumanController::update(float dt) {
                     predictedPos.y += (targetVel.y * timeToReach);
                 }
 
-                // 3. Fire the Ball
+                // Calculate final kick trajectory
                 float dx = predictedPos.x - owner->getPosition().x;
                 float dy = predictedPos.y - owner->getPosition().y;
                 float dist = std::hypot(dx, dy);
 
+                // Lock onto receiver and fire!
                 targetBall->setIntendedReceiver(bestTarget);
 
-                // Apply the trajectory!
+                // Note: Using your new 3-parameter kick vector (X, Y, Height)
                 owner->kickBall({(dx / dist) * passSpeed, (dy / dist) * passSpeed, launchHeight});
+
+            }
+            else {
+                // --- EXISTING LOGIC: THE CLEARANCE / BLIND PASS ---
+                // No teammate was found in that direction. Boot it into open space!
+
+                float clearanceSpeed = 400.f;
+                float clearanceHeight = 50.f;
+
+                // If they hold the Lob Modifier, boot it high into the air!
+                if (modKey) {
+                    clearanceSpeed = 250.f;  // Hangs in the air longer
+                    clearanceHeight = 320.f;
+                }
+
+                targetBall->setIntendedReceiver(nullptr); // No target, it's a free ball!
+
+                owner->kickBall({aimDir.x * clearanceSpeed, aimDir.y * clearanceSpeed, clearanceHeight});
+
             }
 
+            actionCooldown = 0.3f; // Prevent input spam
         }
+        // if (owner->getPossession()) {
+        //     // OFFENSE: Pass the ball
+        //     Footballer* bestTarget = findBestPassTarget(aimDir);
+        //     if (bestTarget) {
+        //
+        //         float initialDx = bestTarget->getPosition().x - owner->getPosition().x;
+        //         float initialDy = bestTarget->getPosition().y - owner->getPosition().y;
+        //         float initialDist = std::hypot(initialDx, initialDy);
+        //
+        //         // 1. CHECK FOR LOB MODIFIER
+        //         bool isLob = modKey;
+        //
+        //         // Adjust speeds: High passes hang in the air longer, so we adjust horizontal travel
+        //         float passSpeed = isLob ? 380.f : 450.f;
+        //         float launchHeight = isLob ? 320.f : 15.f;
+        //
+        //         // 2. PREDICTIVE MATH (Leading the receiver)
+        //         float timeToReach = initialDist / passSpeed;
+        //         sf::Vector2f targetVel = bestTarget->getVelocity();
+        //         sf::Vector2f predictedPos = bestTarget->getPosition();
+        //
+        //         if (std::hypot(targetVel.x, targetVel.y) > 10.f) {
+        //             predictedPos.x += (targetVel.x * timeToReach);
+        //             predictedPos.y += (targetVel.y * timeToReach);
+        //         }
+        //
+        //         // 3. Fire the Ball
+        //         float dx = predictedPos.x - owner->getPosition().x;
+        //         float dy = predictedPos.y - owner->getPosition().y;
+        //         float dist = std::hypot(dx, dy);
+        //
+        //         targetBall->setIntendedReceiver(bestTarget);
+        //
+        //         // Apply the trajectory!
+        //         owner->kickBall({(dx / dist) * passSpeed, (dy / dist) * passSpeed, launchHeight});
+        //     }
+        //
+        // }
         else {
             // DEFENSE: Switch player to whoever is closest to the ball
             Footballer* closestToBall = findClosestTeammateToBall();

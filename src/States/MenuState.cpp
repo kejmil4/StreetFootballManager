@@ -4,6 +4,7 @@
 #include <iostream>
 #include "MatchState.h"
 #include "SettingsState.h"
+#include "AudioSettingsState.h"
 #include "../Core/Game.h"
 #include "CareerStates/CareerMenuState.h"
 
@@ -54,12 +55,16 @@ void MenuState::loadScreen(MenuScreen screen) {
     }
     else if (screen == MenuScreen::Settings) {
         titleStr = "SETTINGS";
-        optionsText = {"Controls (WIP)", "Back"};
+        optionsText = {"Controls", "Audio", "Back"};
     }
     else if (screen == MenuScreen::MatchSetup) {
         titleStr = (pendingMatchType == MatchType::Solo) ? "SOLO SETUP" : "LOCAL MULTIPLAYER SETUP";
 
-        optionsText = {"Pitch", "Weather", "Difficulty", "Time", "Launch Game!", "Back"};
+        if (pendingMatchType == MatchType::Solo) {
+            optionsText = {"Pitch", "Weather", "Difficulty", "Time", "Launch Game!", "Back"};
+        } else {
+            optionsText = {"Pitch", "Weather", "Time", "Launch Game!", "Back"};
+        }
     }
 
     if (!bgFilePath.empty()) {
@@ -128,7 +133,6 @@ void MenuState::handleInput(const sf::Event& event) {
         }
 
         if (keyPress->code == sf::Keyboard::Key::Enter) {
-
             // 1. MAIN MENU
             if (currentScreen == MenuScreen::Main) {
                 if (selectedIndex == 0) loadScreen(MenuScreen::CustomMatch);
@@ -156,36 +160,75 @@ void MenuState::handleInput(const sf::Event& event) {
             // 4. SETTINGS MENU
             else if (currentScreen == MenuScreen::Settings) {
                 if (selectedIndex == 0) game->changeState(std::make_unique<SettingsState>(game));
-                if (selectedIndex == 1) loadScreen(MenuScreen::Main);
+                if (selectedIndex == 1) game->changeState(std::make_unique<AudioSettingsState>(game));
+                if (selectedIndex == 2) loadScreen(MenuScreen::Main);
             }
             // 5. MATCH SETUP (LAUNCH!)
+            // --- MATCH SETUP SCREEN ---
             else if (currentScreen == MenuScreen::MatchSetup) {
-                if (selectedIndex == 4) { // "Launch Game!"
 
-                    MatchSettings settings;
+                // Determine dynamic indices based on whether Difficulty exists!
+                int timeIndex   = (pendingMatchType == MatchType::Solo) ? 3 : 2;
+                int launchIndex = (pendingMatchType == MatchType::Solo) ? 4 : 3;
+                int backIndex   = (pendingMatchType == MatchType::Solo) ? 5 : 4;
 
-                    settings.pitch = static_cast<PitchType>(optPitch);
-                    settings.weather = static_cast<WeatherType>(optWeather);
-                    settings.difficulty = static_cast<Difficulty>(optDiff);
+                // Navigation
+                if (keyPress->code == sf::Keyboard::Key::Up && selectedIndex > 0) {
+                    selectedIndex--;
+                    // game->getAudio()->playSound("menu_move");
+                }
+                if (keyPress->code == sf::Keyboard::Key::Down && selectedIndex < backIndex) {
+                    selectedIndex++;
+                    // game->getAudio()->playSound("menu_move");
+                }
 
-                    if (optTime == 0) settings.matchLengthSeconds = 60;
-                    else if (optTime == 1) settings.matchLengthSeconds = 180;
-                    else if (optTime == 2) settings.matchLengthSeconds = 300;
-                    else if (optTime == 3) settings.matchLengthSeconds = 600;
+                // Options Toggling (Left/Right)
+                if (keyPress->code == sf::Keyboard::Key::Left) {
+                    if (selectedIndex == 0) optPitch = (optPitch - 1 + 3) % 3;
+                    if (selectedIndex == 1) optWeather = (optWeather - 1 + 3) % 3;
+                    if (pendingMatchType == MatchType::Solo && selectedIndex == 2) optDiff = (optDiff - 1 + 3) % 3;
+                    if (selectedIndex == timeIndex) optTime = (optTime - 1 + 4) % 4; // FIXED!
+                    // game->getAudio()->playSound("menu_move");
+                }
+                if (keyPress->code == sf::Keyboard::Key::Right) {
+                    if (selectedIndex == 0) optPitch = (optPitch + 1) % 3;
+                    if (selectedIndex == 1) optWeather = (optWeather + 1) % 3;
+                    if (pendingMatchType == MatchType::Solo && selectedIndex == 2) optDiff = (optDiff + 1) % 3;
+                    if (selectedIndex == timeIndex) optTime = (optTime + 1) % 4; // FIXED!
+                    // game->getAudio()->playSound("menu_move");
+                }
 
-                    if (pendingMatchType == MatchType::Solo) {
-                        settings.homeHumans = 1;
-                        settings.awayHumans = 0;
-                    } else if (pendingMatchType == MatchType::LocalMultiplayer) {
-                        settings.homeHumans = 1;
-                        settings.awayHumans = 1;
+                // Selection (Enter)
+                if (keyPress->code == sf::Keyboard::Key::Enter) {
+
+                    // LAUNCH GAME
+                    if (selectedIndex == launchIndex) {
+                        game->getAudio()->playSound("whistle");
+
+                        MatchSettings settings;
+                        settings.pitch = static_cast<PitchType>(optPitch);
+                        settings.weather = static_cast<WeatherType>(optWeather);
+                        settings.difficulty = static_cast<Difficulty>(optDiff);
+
+                        int timeValues[] = {60, 180, 300, 600};
+                        settings.matchLengthSeconds = timeValues[optTime];
+
+                        if (pendingMatchType == MatchType::Solo) {
+                            settings.homeHumans = 1;
+                            settings.awayHumans = 0;
+                        } else { // Local Multiplayer
+                            settings.homeHumans = 1;
+                            settings.awayHumans = 1;
+                        }
+
+                        game->changeState(std::make_unique<MatchState>(game, settings));
                     }
 
-                    game->changeState(std::make_unique<MatchState>(game, settings));
-                }
-                else if (selectedIndex == 5) { // "Back"
-                    if (pendingMatchType == MatchType::Solo) loadScreen(MenuScreen::CustomMatch);
-                    else loadScreen(MenuScreen::Multiplayer);
+                    // BACK BUTTON
+                    else if (selectedIndex == backIndex) {
+                        game->getAudio()->playSound("menu_select");
+                        loadScreen(MenuScreen::Main);
+                    }
                 }
             }
         }
@@ -234,8 +277,11 @@ void MenuState::refreshSetupText() {
         menuOptions[4].setString("Back");
     }
 
-    for (int i = 0; i < 4; ++i) {
-        sf::FloatRect bounds = menuOptions[i].getLocalBounds();
-        menuOptions[i].setOrigin({bounds.size.x / 2.0f, bounds.size.y / 2.0f});
+    for (auto& text : menuOptions) {
+        sf::FloatRect bounds = text.getLocalBounds();
+
+        text.setOrigin({bounds.size.x / 2.f, bounds.size.y / 2.f});
+
+        text.setPosition({Config::CENTER_X, text.getPosition().y});
     }
 }
