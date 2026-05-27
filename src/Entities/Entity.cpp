@@ -18,10 +18,10 @@ void Entity::applyMovement(float dt) {
     bool isMoving = (velocity.x != 0.f || velocity.y != 0.f);
 
     if (isMoving) {
-        currentStamina -= 30.f * dt;
+        currentStamina -= 1.f * dt;
         if (currentStamina < 0.f) currentStamina = 0.f;
     } else {
-        currentStamina += 20.f * dt;
+        currentStamina += 1.5f * dt;
         if (currentStamina > stats.maxStamina) currentStamina = stats.maxStamina;
     }
 

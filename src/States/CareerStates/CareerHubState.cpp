@@ -10,23 +10,45 @@
 #include <iostream>
 
 CareerHubState::CareerHubState(Game* game, std::shared_ptr<CareerData> careerData)
-    : GameState(game), career(careerData), headerText(font), statsText(font), selectedIndex(0)
+    : GameState(game), career(careerData), headerText(font), statsText(font), selectedIndex(0), bgSprite(bgTexture), logoSprite(logoTexture)
 {
     if (!font.openFromFile("assets/font.ttf")) {
         std::cerr << "FAILED TO LOAD: assets/font.ttf for CareerHub!\n";
     }
 
+    std::string bgFilePath = "assets/menus/menuCareerHub.png";
+    if (!bgTexture.loadFromFile(bgFilePath)) {
+        std::cerr << "FAILED TO LOAD BG: " << bgFilePath << " for CareerHub!\n";
+    }
+    bgSprite.setTexture(bgTexture, true);
+
+    sf::Vector2u textureSize = bgTexture.getSize();
+    float scaleX = static_cast<float>(Config::WINDOW_WIDTH) / textureSize.x;
+    float scaleY = static_cast<float>(Config::WINDOW_HEIGHT) / textureSize.y;
+    bgSprite.setScale({scaleX, scaleY});
+
+    int displayLogoId = career->logoId;
+    std::string logoPath = "assets/logos/logo" + std::to_string(displayLogoId) + ".png";
+
+    if (!logoTexture.loadFromFile(logoPath)) {
+        std::cerr << "FAILED TO LOAD LOGO: " << logoPath << " for CareerHub!\n";
+    }
+    logoSprite.setTexture(logoTexture, true);
+
+    logoSprite.setScale({0.4f, 0.4f});
+    logoSprite.setPosition({Config::WINDOW_WIDTH * 0.4f, Config::WINDOW_HEIGHT * 0.21f});
+
     // 1. Team Name Header
-    headerText.setString(career->teamName + " - Week " + std::to_string(career->currentWeek));
-    headerText.setCharacterSize(60);
+    headerText.setString(career->teamName);
+    headerText.setCharacterSize(30);
     headerText.setFillColor(sf::Color::Yellow);
-    headerText.setPosition({100.f, 50.f}); // Top left corner
+    headerText.setPosition({Config::WINDOW_WIDTH * 0.5f, Config::WINDOW_HEIGHT * 0.25f});
 
     // 2. Resources Info
-    statsText.setString("Street Cred: $" + std::to_string(career->streetCred));
-    statsText.setCharacterSize(40);
+    statsText.setString("Week " + std::to_string(career->currentWeek) + "    Street Cred: $" + std::to_string(career->streetCred));
+    statsText.setCharacterSize(30);
     statsText.setFillColor(sf::Color::Green);
-    statsText.setPosition({100.f, 120.f});
+    statsText.setPosition({Config::WINDOW_WIDTH * 0.3f, Config::WINDOW_HEIGHT * 0.35f});
 
     std::string opponentName = "UNKNOWN";
     for (const auto& match : career->schedule) {
@@ -50,13 +72,19 @@ CareerHubState::CareerHubState(Game* game, std::shared_ptr<CareerData> careerDat
         "Save & Quit to Main Menu"
     };
 
+    float startX = Config::WINDOW_WIDTH * 0.5f;
+    float startY = Config::WINDOW_HEIGHT * 0.45f;
+    float spacingY = Config::WINDOW_HEIGHT * 0.06f;
+
     for (int i = 0; i < optionsText.size(); ++i) {
         sf::Text option(font);
         option.setString(optionsText[i]);
-        option.setCharacterSize(50);
+        option.setCharacterSize(30);
 
-        // Aligning these to the left side of the screen like a dashboard menu
-        option.setPosition({100.f, 300.f + (i * 80.f)});
+        sf::FloatRect bounds = option.getLocalBounds();
+        option.setOrigin({bounds.position.x + bounds.size.x / 2.f, bounds.position.y + bounds.size.y / 2.f});
+        option.setPosition({startX, startY + (static_cast<float>(i) * spacingY)});
+
         menuOptions.push_back(option);
     }
 
@@ -187,6 +215,8 @@ void CareerHubState::update(float dt) {
 }
 
 void CareerHubState::render(sf::RenderTarget& target) {
+    target.draw(bgSprite);
+    target.draw(logoSprite);
     target.draw(headerText);
     target.draw(statsText);
     for (auto& option : menuOptions) {

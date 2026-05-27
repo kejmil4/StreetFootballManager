@@ -7,13 +7,19 @@
 
 class CareerHubState : public GameState {
 private:
-    std::shared_ptr<CareerData> career; // The Brains!
+    std::shared_ptr<CareerData> career;
 
     sf::Font font;
     sf::Text headerText;
     sf::Text statsText;
     std::vector<sf::Text> menuOptions;
     int selectedIndex;
+
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
+
+    sf::Texture logoTexture;
+    sf::Sprite logoSprite;
 
 public:
     CareerHubState(Game* game, std::shared_ptr<CareerData> careerData);

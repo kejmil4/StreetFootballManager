@@ -6,24 +6,32 @@
 #include <iostream>
 
 CareerSetupState::CareerSetupState(Game* game)
-    : GameState(game), selectedIndex(0), selectedPitch(0), selectedLogo(0), selectedArchetype(0), playerNameString("THE ROOKIES"), titleText(font), nameInputText(font)
+    : GameState(game), selectedIndex(0), selectedPitch(0), selectedLogo(0), selectedArchetype(0), playerNameString("THE ROOKIES"), titleText(font), nameInputText(font), bgSprite(bgTexture)
 {
-    font.openFromFile("assets/font.ttf");
+    if (!font.openFromFile("assets/font.ttf")) {
+        std::cerr << "FAILED TO LOAD: assets/font.ttf for GameOverState!\n";
+    }
 
-    titleText.setFont(font);
-    titleText.setString("CREATE YOUR CREW");
-    titleText.setCharacterSize(60);
-    titleText.setFillColor(sf::Color::Yellow);
-    titleText.setPosition({100.f, 50.f});
+    std::string bgFilePath = "assets/menus/menuCareerSetup5.png";
+    if (!bgTexture.loadFromFile(bgFilePath)) {
+        std::cerr << "FAILED TO LOAD BG: " << bgFilePath;
+    }
+    bgSprite.setTexture(bgTexture, true);
+
+    sf::Vector2u textureSize = bgTexture.getSize();
+    float scaleX = static_cast<float>(Config::WINDOW_WIDTH) / textureSize.x;
+    float scaleY = static_cast<float>(Config::WINDOW_HEIGHT) / textureSize.y;
+    bgSprite.setScale({scaleX, scaleY});
+
 
     nameInputText.setFont(font);
-    nameInputText.setCharacterSize(50);
-    nameInputText.setPosition({100.f, 200.f});
+    nameInputText.setCharacterSize(20);
+    nameInputText.setPosition({Config::WINDOW_WIDTH * 0.66f, Config::WINDOW_HEIGHT * 0.22f});
 
     for (int i = 0; i < 4; ++i) {
         sf::Text opt(font);
-        opt.setCharacterSize(40);
-        opt.setPosition({100.f, 300.f + (i * 80.f)});
+        opt.setCharacterSize(18);
+        opt.setPosition({Config::WINDOW_WIDTH * 0.66f, Config::WINDOW_HEIGHT * 0.35f + (i * Config::WINDOW_HEIGHT * 0.13f)});
         menuOptions.push_back(opt);
     }
 
@@ -33,7 +41,7 @@ CareerSetupState::CareerSetupState(Game* game)
 
 void CareerSetupState::refreshUI() {
     // 1. Team Name Input
-    nameInputText.setString("Team Name: " + playerNameString + (selectedIndex == 0 ? "_" : ""));
+    nameInputText.setString(playerNameString + (selectedIndex == 0 ? "_" : ""));
     nameInputText.setFillColor(selectedIndex == 0 ? sf::Color::Cyan : sf::Color::White);
 
     // 2. Toggles
@@ -87,17 +95,16 @@ void CareerSetupState::handleInput(const sf::Event& event) {
         }
         else if (keyPressed->code == sf::Keyboard::Key::Enter && selectedIndex == 4) {
 
-            // --- FINALIZE CREATION! ---
             career->teamName = playerNameString;
             career->streetCred = 500;
             career->currentWeek = 1;
             career->homePitch = static_cast<PitchType>(selectedPitch);
-            career->logoId = selectedLogo + 11;
+            career->logoId = selectedLogo + 12;
 
             // Generate Starters based on Archetype
             EntityStats baseline = {100.f, 100.f, 100.f, 100.f, 100.f};
             if (selectedArchetype == 1) { // Speedsters
-                baseline.speed = 130.f; baseline.tackling = 70.f;
+                baseline.speed = 120.f; baseline.tackling = 70.f;
             } else if (selectedArchetype == 2) { // Bruisers
                 baseline.tackling = 130.f; baseline.maxStamina = 130.f; baseline.speed = 80.f;
             }
@@ -116,7 +123,7 @@ void CareerSetupState::handleInput(const sf::Event& event) {
 }
 void CareerSetupState::update(float dt) {}
 void CareerSetupState::render(sf::RenderTarget& target) {
-    target.draw(titleText);
+    target.draw(bgSprite);
     target.draw(nameInputText);
     for (const auto& opt : menuOptions) target.draw(opt);
 }

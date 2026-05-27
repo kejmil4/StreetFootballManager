@@ -4,7 +4,11 @@
 #include "../States/MenuState.h"
 
 Game::Game() {
-    window.create(sf::VideoMode({Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT}), "Street Football Manager", sf::Style::Default);
+    window.create(sf::VideoMode({Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT}),
+        "Street Football Manager",
+        sf::Style::Default
+        // ,sf::State::Fullscreen
+        );
     window.setFramerateLimit(60);
 
     Config::loadSettings();
@@ -17,7 +21,11 @@ Game::Game() {
 
     std::vector<std::string> myTracks = {
         "assets/music/song1.mp3",
-        "assets/music/song2.mp3"
+        "assets/music/song2.mp3",
+        "assets/music/song3.mp3",
+        "assets/music/song4.mp3",
+        "assets/music/song5.mp3",
+        "assets/music/song6.mp3"
     };
     audioManager->playPlaylist(myTracks, true);
 
@@ -43,14 +51,11 @@ void Game::run() {
 }
 
 void Game::processEvents() {
-    // SFML 3.0 Event Polling (using std::optional)
     while (const std::optional<sf::Event> event = window.pollEvent()) {
-        // Check if the event is a closed event
         if (event->is<sf::Event::Closed>()) {
             window.close();
         }
 
-        // ADD THIS: Pass the event down to the current state
         if (currentState) {
             currentState->handleInput(*event);
         }

@@ -12,12 +12,15 @@ private:
     sf::Font font;
     sf::Text titleText;
     sf::Text instructionText;
-    sf::Text warningText; // Used if they try to select more than 3 players
+    sf::Text warningText;
 
     std::vector<sf::Text> rosterTexts;
     sf::Text exitText;
 
     int selectedIndex;
+
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
 
     void refreshUI();
     int getStarterCount();

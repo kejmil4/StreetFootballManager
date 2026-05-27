@@ -38,7 +38,7 @@ void MenuState::loadScreen(MenuScreen screen) {
     if (screen == MenuScreen::Main) {
         titleStr = "";
         optionsText = {"Custom Match", "Career Mode", "Settings", "Exit Game"};
-        bgFilePath = "assets/menu.png";
+        bgFilePath = "assets/menus/menu.png";
 
         startX = Config::WINDOW_WIDTH * 0.835f;
         startY = Config::WINDOW_HEIGHT * 0.285f;
@@ -47,23 +47,39 @@ void MenuState::loadScreen(MenuScreen screen) {
     else if (screen == MenuScreen::CustomMatch) {
         titleStr = "CUSTOM MATCH";
         optionsText = {"Solo vs AI", "Multiplayer", "Back"};
-        // bgFilePath = "assets/custom_bg.png";
+        bgFilePath = "assets/menus/menuCustomMatch.png";
+
+        startX = Config::WINDOW_WIDTH * 0.775f;
+        startY = Config::WINDOW_HEIGHT * 0.27f;
+        spacingY = Config::WINDOW_HEIGHT * 0.22f;
     }
     else if (screen == MenuScreen::Multiplayer) {
         titleStr = "MULTIPLAYER";
-        optionsText = {"Local Multiplayer", "LAN Multiplayer (WIP)", "Back"};
+        optionsText = {"LOCAL", "LAN (WIP)", "Back"};
+        bgFilePath = "assets/menus/menuMultiplayer.png";
+
+        startX = Config::WINDOW_WIDTH * 0.775f;
+        startY = Config::WINDOW_HEIGHT * 0.27f;
+        spacingY = Config::WINDOW_HEIGHT * 0.22f;
     }
     else if (screen == MenuScreen::Settings) {
         titleStr = "SETTINGS";
         optionsText = {"Controls", "Audio", "Back"};
+        bgFilePath = "assets/menus/menuSettings.png";
+
+        startX = Config::WINDOW_WIDTH * 0.775f;
+        startY = Config::WINDOW_HEIGHT * 0.27f;
+        spacingY = Config::WINDOW_HEIGHT * 0.22f;
     }
     else if (screen == MenuScreen::MatchSetup) {
         titleStr = (pendingMatchType == MatchType::Solo) ? "SOLO SETUP" : "LOCAL MULTIPLAYER SETUP";
 
         if (pendingMatchType == MatchType::Solo) {
             optionsText = {"Pitch", "Weather", "Difficulty", "Time", "Launch Game!", "Back"};
+            bgFilePath = "assets/menus/menuSoloAISetup.png";
         } else {
             optionsText = {"Pitch", "Weather", "Time", "Launch Game!", "Back"};
+            bgFilePath = "assets/menus/menuLocalMultiplayerSetup.png";
         }
     }
 
@@ -86,8 +102,12 @@ void MenuState::loadScreen(MenuScreen screen) {
 
         if (screen == MenuScreen::Main) {
             option.setCharacterSize(28);
-        } else {
-            option.setCharacterSize(50);
+        } else if (screen == MenuScreen::CustomMatch){
+            option.setCharacterSize(28);
+        } else if (screen == MenuScreen::Settings) {
+            option.setCharacterSize(34);
+        } else if (screen == MenuScreen::Multiplayer) {
+            option.setCharacterSize(28);
         }
 
         sf::FloatRect bounds = option.getLocalBounds();
@@ -258,6 +278,8 @@ void MenuState::render(sf::RenderTarget& target) {
 void MenuState::refreshSetupText() {
     if (currentScreen != MenuScreen::MatchSetup) return;
 
+    float startX, startY, spacingY;
+
     std::vector<std::string> pitches = {"< Pitch: Grass >", "< Pitch: Asphalt >", "< Pitch: Mud >"};
     std::vector<std::string> weathers = {"< Weather: Clear >", "< Weather: Rain >", "< Weather: Snow >"};
     std::vector<std::string> diffs = {"< Difficulty: Easy >", "< Difficulty: Medium >", "< Difficulty: Hard >"};
@@ -271,17 +293,29 @@ void MenuState::refreshSetupText() {
         menuOptions[3].setString(times[optTime]);
         menuOptions[4].setString("Launch Game!");
         menuOptions[5].setString("Back");
+
+        startX = Config::WINDOW_WIDTH * 0.84f;
+        startY = Config::WINDOW_HEIGHT * 0.165f;
+        spacingY = Config::WINDOW_HEIGHT * 0.132f;
     } else {
         menuOptions[2].setString(times[optTime]);
         menuOptions[3].setString("Launch Game!");
         menuOptions[4].setString("Back");
+
+        startX = Config::WINDOW_WIDTH * 0.7f;
+        startY = Config::WINDOW_HEIGHT * 0.25f;
+        spacingY = Config::WINDOW_HEIGHT * 0.137f;
     }
 
-    for (auto& text : menuOptions) {
-        sf::FloatRect bounds = text.getLocalBounds();
+    for (size_t i = 0; i < menuOptions.size(); ++i) {
+        menuOptions[i].setCharacterSize(18);
 
-        text.setOrigin({bounds.size.x / 2.f, bounds.size.y / 2.f});
+        menuOptions[i].setScale({1.0f, 1.0f});
 
-        text.setPosition({Config::CENTER_X, text.getPosition().y});
+        sf::FloatRect bounds = menuOptions[i].getLocalBounds();
+
+        menuOptions[i].setOrigin({bounds.position.x + bounds.size.x / 2.f, bounds.position.y + bounds.size.y / 2.f});
+
+        menuOptions[i].setPosition({startX, startY + (static_cast<float>(i) * spacingY)});
     }
 }

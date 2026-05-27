@@ -14,6 +14,9 @@ private:
 
     int selectedIndex;
 
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
+
     void refreshUI();
 
 public:

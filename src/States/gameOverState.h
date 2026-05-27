@@ -1,8 +1,7 @@
 #pragma once
 #include "GameState.h"
 #include "MatchState.h"
-#include <SFML/Graphics/Text.hpp>
-#include <SFML/Graphics/Font.hpp>
+#include <SFML/Graphics.hpp>
 
 class GameOverState : public GameState {
 private:
@@ -10,6 +9,9 @@ private:
     sf::Text resultText;
     sf::Text scoreText;
     sf::Text promptText;
+
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
 
 public:
     GameOverState(Game* game, int homeScore, int awayScore);

@@ -29,14 +29,13 @@ void AudioManager::playSound(const std::string& name) {
     }
 }
 
-// --- NEW: START THE PLAYLIST ---
+// --- START THE PLAYLIST ---
 void AudioManager::playPlaylist(const std::vector<std::string>& filepaths, bool shuffle) {
     if (filepaths.empty()) return;
 
     playlist = filepaths;
     currentTrackIndex = 0;
 
-    // Optional: Randomize the playlist order!
     if (shuffle) {
         std::random_device rd;
         std::mt19937 g(rd());
@@ -44,7 +43,7 @@ void AudioManager::playPlaylist(const std::vector<std::string>& filepaths, bool 
     }
 
     if (backgroundMusic->openFromFile(playlist[currentTrackIndex])) {
-        backgroundMusic->setLooping(false); // CRITICAL: Turn OFF loop so it actually ends!
+        backgroundMusic->setLooping(false);
         updateVolumes();
         backgroundMusic->play();
     } else {
@@ -62,18 +61,15 @@ void AudioManager::updateVolumes() {
     }
 }
 
-// --- NEW: THE UPDATE LOOP ---
 void AudioManager::update() {
-    // 1. Clean up finished sound effects
     activeSounds.remove_if([](const sf::Sound& s) {
         return s.getStatus() == sf::Sound::Status::Stopped;
     });
 
-    // 2. Check if the current song finished, and play the next one!
+
     if (!playlist.empty() && backgroundMusic->getStatus() == sf::Sound::Status::Stopped) {
         currentTrackIndex++;
 
-        // If we reached the end of the playlist, loop back to the first song
         if (currentTrackIndex >= playlist.size()) {
             currentTrackIndex = 0;
         }

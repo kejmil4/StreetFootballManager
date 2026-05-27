@@ -3,19 +3,24 @@
 #include "../Core/Game.h"
 #include "../Core/Config.h"
 
-AudioSettingsState::AudioSettingsState(Game* game) : GameState(game), selectedIndex(0), titleText(font) {
+AudioSettingsState::AudioSettingsState(Game* game) : GameState(game), selectedIndex(0), titleText(font), bgSprite(bgTexture) {
     font.openFromFile("assets/font.ttf");
 
-    titleText.setFont(font);
-    titleText.setString("AUDIO SETTINGS");
-    titleText.setCharacterSize(60);
-    titleText.setFillColor(sf::Color::Yellow);
-    titleText.setPosition({Config::CENTER_X - 450.f, 150.f});
+    std::string bgFilePath = "assets/menus/menuAudioSettings.png";
+    if (!bgTexture.loadFromFile(bgFilePath)) {
+        std::cerr << "FAILED TO LOAD BG: " << bgFilePath;
+    }
+    bgSprite.setTexture(bgTexture, true);
+
+    sf::Vector2u textureSize = bgTexture.getSize();
+    float scaleX = static_cast<float>(Config::WINDOW_WIDTH) / textureSize.x;
+    float scaleY = static_cast<float>(Config::WINDOW_HEIGHT) / textureSize.y;
+    bgSprite.setScale({scaleX, scaleY});
 
     for (int i = 0; i < 4; ++i) {
         sf::Text text(font);
         text.setCharacterSize(45);
-        text.setPosition({Config::CENTER_X - 400.f, 350.f + (i * 100.f)});
+        text.setPosition({Config::WINDOW_WIDTH * 0.2f, 350.f + (i * 100.f)});
         menuOptions.push_back(text);
     }
     refreshUI();
@@ -67,6 +72,6 @@ void AudioSettingsState::handleInput(const sf::Event& event) {
 }
 void AudioSettingsState::update(float dt) {}
 void AudioSettingsState::render(sf::RenderTarget& target) {
-    target.draw(titleText);
+    target.draw(bgSprite);
     for (const auto& opt : menuOptions) target.draw(opt);
 }

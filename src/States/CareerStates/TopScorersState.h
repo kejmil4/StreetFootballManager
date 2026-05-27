@@ -14,6 +14,9 @@ private:
     std::vector<sf::Text> rowTexts;
     sf::Text exitText;
 
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
+
     void buildTable();
 
 public:

@@ -52,7 +52,6 @@ sf::Texture FootballerAnimator::loadCustomKit(const std::string& filepath, sf::C
 }
 
 void FootballerAnimator::update(float dt, sf::Vector2f velocity, sf::Sprite& targetSprite, Team teamAlignment, bool isHuman) {
-    // 1. Frame progression (Are we running?)
     bool isMoving = (velocity.x != 0.f || velocity.y != 0.f);
 
     if (isMoving) {
@@ -78,7 +77,6 @@ void FootballerAnimator::update(float dt, sf::Vector2f velocity, sf::Sprite& tar
         facingDirection = 1.f;
     }
     else {
-        // Stationary: face the opponent's goal by default
         if (teamAlignment == Team::Away) {
             targetSprite.setScale({-4.f, 4.f});
             facingDirection = -1.f;

@@ -8,18 +8,32 @@ class SettingsState : public GameState {
 private:
     sf::Font font;
     sf::Text titleText;
-    std::vector<sf::Text> menuOptions;
 
-    int selectedIndex;
+    // Static Column Headers
+    sf::Text actionHeader;
+    sf::Text p1Header;
+    sf::Text p2Header;
+
+    // Interactive Column Data Grid (Upgraded to Vectors for SFML 3.0 Font Requirements)
+    std::vector<sf::Text> actionLabels;
+    std::vector<sf::Text> p1KeyTexts;
+    std::vector<sf::Text> p2KeyTexts;
+    sf::Text backButton;
+
+    // Grid Navigation Tracking
+    int selectedRow; // 0-6 for binds, 7 for Back button
+    int selectedCol; // 0 for Player 1, 1 for Player 2
     bool isBinding;
 
-    // Pointers that point directly to the keys in Config.h!
+    // Architecture Pointers linked to Config.h
     sf::Keyboard::Key* bindPointers[14];
-    std::string bindNames[14];
+    std::string actionNames[7];
 
     void refreshUI();
-    std::string keyToStr(sf::Keyboard::Key key); // Helper to turn Enums into text
+    std::string keyToStr(sf::Keyboard::Key key); // Safe string conversion helper
 
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
 public:
     SettingsState(Game* game);
     ~SettingsState() override = default;

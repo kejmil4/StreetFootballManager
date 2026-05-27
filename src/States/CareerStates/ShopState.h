@@ -19,6 +19,9 @@ private:
     std::vector<sf::Text> recruitTexts;
     sf::Text exitText;
 
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
+
     int selectedIndex;
 
     void generateRecruits();

@@ -1,7 +1,6 @@
 #pragma once
 #include "../GameState.h"
-#include <SFML/Graphics/Text.hpp>
-#include <SFML/Graphics/Font.hpp>
+#include <SFML/Graphics.hpp>
 #include <vector>
 #include <string>
 
@@ -11,6 +10,9 @@ private:
     sf::Text titleText;
     std::vector<sf::Text> menuOptions;
     int selectedIndex;
+
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
 
 public:
     CareerMenuState(Game* game);

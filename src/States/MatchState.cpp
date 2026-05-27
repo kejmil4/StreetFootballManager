@@ -113,7 +113,7 @@ void MatchState::handleInput(const sf::Event& event) {
 }
 
 void MatchState::spawnTeams() {
-    EntityStats humanStats = {100.f, 50.f, 50.f, 50.f, 1000.f};
+    EntityStats humanStats = {100.f, 100.f, 100.f, 100.f, 100.f};
 
     EntityStats aiStats = humanStats;
     if (settings.difficulty == Difficulty::Easy) {
@@ -197,7 +197,6 @@ void MatchState::spawnTeams() {
         gameObjects.push_back(std::move(player));
     }
 
-    // Finally, ensure the ball is pushed back to the end of the draw order so it renders on top
     for (auto it = gameObjects.begin(); it != gameObjects.end(); ++it) {
         if (dynamic_cast<Ball*>(it->get())) {
             auto ballNode = std::move(*it);

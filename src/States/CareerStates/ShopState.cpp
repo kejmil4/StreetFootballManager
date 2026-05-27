@@ -7,28 +7,33 @@
 #include <cstdlib>
 
 ShopState::ShopState(Game* game, std::shared_ptr<CareerData> careerData)
-    : GameState(game), career(careerData), titleText(font), credText(font), rosterCountText(font), selectedIndex(0), exitText(font)
+    : GameState(game), career(careerData), titleText(font), credText(font), rosterCountText(font), selectedIndex(0), exitText(font), bgSprite(bgTexture)
 {
     if (!font.openFromFile("assets/font.ttf")) {
         std::cerr << "FAILED TO LOAD: assets/font.ttf for ShopState!\n";
     }
 
-    titleText.setString("THE BLOCK - RECRUITMENT");
-    titleText.setCharacterSize(70);
-    titleText.setFillColor(sf::Color::Yellow);
-    titleText.setPosition({100.f, 50.f});
+    std::string bgFilePath = "assets/menus/menuRoster.png";
+    if (!bgTexture.loadFromFile(bgFilePath)) {
+        std::cerr << "FAILED TO LOAD BG: " << bgFilePath;
+    }
+    bgSprite.setTexture(bgTexture, true);
+
+    sf::Vector2u textureSize = bgTexture.getSize();
+    float scaleX = static_cast<float>(Config::WINDOW_WIDTH) / textureSize.x;
+    float scaleY = static_cast<float>(Config::WINDOW_HEIGHT) / textureSize.y;
+    bgSprite.setScale({scaleX, scaleY});
 
     exitText.setFont(font);
     exitText.setString("Back to Hub");
-    exitText.setCharacterSize(50);
-    exitText.setPosition({100.f, 800.f});
+    exitText.setCharacterSize(20);
+    exitText.setPosition({Config::WINDOW_WIDTH * 0.2f, Config::WINDOW_HEIGHT * 0.8f});
 
     generateRecruits();
     refreshUI();
 }
 
 void ShopState::generateRecruits() {
-    // Generate 3 random street players
     std::vector<std::string> randomNames = {"Slick", "Tank", "Ghost", "Viper", "Bullet", "Brick"};
 
     for (int i = 0; i < 3; ++i) {
@@ -48,31 +53,33 @@ void ShopState::generateRecruits() {
 }
 
 void ShopState::refreshUI() {
-    // Update Wallet and Roster Size (Assuming max 5 players)
+
+    float startX = Config::WINDOW_WIDTH * 0.2f;
+    float startY = Config::WINDOW_HEIGHT * 0.43f;
+    float spacingY = Config::WINDOW_HEIGHT * 0.08f;
+
     credText.setString("Wallet: $" + std::to_string(career->streetCred));
-    credText.setCharacterSize(50);
+    credText.setCharacterSize(25);
     credText.setFillColor(sf::Color::Green);
-    credText.setPosition({100.f, 150.f});
+    credText.setPosition({Config::WINDOW_WIDTH * 0.2f, Config::WINDOW_HEIGHT * 0.3f});
 
-    rosterCountText.setString("Crew Size: " + std::to_string(career->roster.size()) + " / 5");
-    rosterCountText.setCharacterSize(40);
+    rosterCountText.setString("Crew Size: " + std::to_string(career->roster.size()) + " / 7");
+    rosterCountText.setCharacterSize(25);
     rosterCountText.setFillColor(sf::Color::White);
-    rosterCountText.setPosition({500.f, 160.f});
+    rosterCountText.setPosition({Config::WINDOW_WIDTH * 0.2f, Config::WINDOW_HEIGHT * 0.38f});
 
-    // Generate Text for Recruits
     recruitTexts.clear();
     for (int i = 0; i < availableRecruits.size(); ++i) {
         sf::Text txt(font);
         CareerPlayer& p = availableRecruits[i];
 
-        // Format: "Name | Spd: 100 Sht: 100 | Cost: $250"
-        std::string info = p.name + " | Spd:" + std::to_string((int)p.stats.speed) +
-                           " Sht:" + std::to_string((int)p.stats.shooting) +
-                           " | COST: $" + std::to_string(p.cost);
+        std::string info = p.name + " | COST: $" + std::to_string(p.cost) + "\nSpd:" + std::to_string((int)p.stats.speed) +
+            " Sht:" + std::to_string((int)p.stats.shooting)  + " Pass:" + std::to_string((int)p.stats.passing)
+             + " Tack:" + std::to_string((int)p.stats.tackling) + " Stamina:" + std::to_string((int)p.stats.maxStamina);
 
         txt.setString(info);
-        txt.setCharacterSize(40);
-        txt.setPosition({100.f, 300.f + (i * 100.f)});
+        txt.setCharacterSize(20);
+        txt.setPosition({startX, startY + (static_cast<float>(i) * spacingY)});
         recruitTexts.push_back(txt);
     }
 }
@@ -80,7 +87,6 @@ void ShopState::refreshUI() {
 void ShopState::handleInput(const sf::Event& event) {
     if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>()) {
 
-        // Total options = number of recruits + 1 (for the Exit button)
         int maxIndex = availableRecruits.size();
 
         if (keyPressed->code == sf::Keyboard::Key::Up) {
@@ -132,7 +138,7 @@ void ShopState::update(float dt) {
 }
 
 void ShopState::render(sf::RenderTarget& target) {
-    target.draw(titleText);
+    target.draw(bgSprite);
     target.draw(credText);
     target.draw(rosterCountText);
 

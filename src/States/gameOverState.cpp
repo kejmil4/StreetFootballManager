@@ -1,17 +1,26 @@
-#include "GameOverState.h"
+#include "gameOverState.h"
 #include "MenuState.h"
 #include "../Core/Game.h"
-#include "../Core/Config.h" // Needed for Config::CENTER_X / Y
+#include "../Core/Config.h"
 #include <iostream>
 #include <string>
 
-GameOverState::GameOverState(Game* game, int homeScore, int awayScore) : GameState(game), resultText(font), scoreText(font), promptText(font) {
-    // 1. Load the retro font
+GameOverState::GameOverState(Game* game, int homeScore, int awayScore) : GameState(game), resultText(font), scoreText(font), promptText(font), bgSprite(bgTexture) {
     if (!font.openFromFile("assets/font.ttf")) {
         std::cerr << "FAILED TO LOAD: assets/font.ttf for GameOverState!\n";
     }
 
-    // 2. Determine Outcome and Colors
+    std::string bgFilePath = "assets/menus/menuMatchResults.png";
+    if (!bgTexture.loadFromFile(bgFilePath)) {
+        std::cerr << "FAILED TO LOAD BG: " << bgFilePath;
+    }
+    bgSprite.setTexture(bgTexture, true);
+
+    sf::Vector2u textureSize = bgTexture.getSize();
+    float scaleX = static_cast<float>(Config::WINDOW_WIDTH) / textureSize.x;
+    float scaleY = static_cast<float>(Config::WINDOW_HEIGHT) / textureSize.y;
+    bgSprite.setScale({scaleX, scaleY});
+
     std::string resultStr;
     sf::Color resultColor;
 
@@ -26,7 +35,6 @@ GameOverState::GameOverState(Game* game, int homeScore, int awayScore) : GameSta
         resultColor = sf::Color::Yellow;
     }
 
-    // 3. Setup the Result Text (Top)
     resultText.setFont(font);
     resultText.setString(resultStr);
     resultText.setCharacterSize(80);
@@ -36,20 +44,20 @@ GameOverState::GameOverState(Game* game, int homeScore, int awayScore) : GameSta
     resultText.setOrigin({resultBounds.size.x / 2.0f, resultBounds.size.y / 2.0f});
     resultText.setPosition({Config::CENTER_X, Config::CENTER_Y - 150.f});
 
-    // 4. Setup the Score Text (Middle)
+    // Setup the Score Text
     scoreText.setFont(font);
     scoreText.setString("Final Score: " + std::to_string(homeScore) + " - " + std::to_string(awayScore));
-    scoreText.setCharacterSize(60);
+    scoreText.setCharacterSize(50);
     scoreText.setFillColor(sf::Color::White);
 
     sf::FloatRect scoreBounds = scoreText.getLocalBounds();
     scoreText.setOrigin({scoreBounds.size.x / 2.0f, scoreBounds.size.y / 2.0f});
     scoreText.setPosition({Config::CENTER_X, Config::CENTER_Y});
 
-    // 5. Setup the Prompt Text (Bottom)
+    // Setup the Prompt Text
     promptText.setFont(font);
     promptText.setString("Press ENTER to return to Menu");
-    promptText.setCharacterSize(40);
+    promptText.setCharacterSize(30);
     promptText.setFillColor(sf::Color::Cyan);
 
     sf::FloatRect promptBounds = promptText.getLocalBounds();
@@ -58,10 +66,9 @@ GameOverState::GameOverState(Game* game, int homeScore, int awayScore) : GameSta
 }
 
 void GameOverState::handleInput(const sf::Event& event) {
-    // SFML 3.0 Syntax: Check for KeyPressed
     if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>()) {
 
-        // If they press Enter or Space, go back to the Main Menu
+        // If the user presses Enter or Space, go back to the Main Menu
         if (keyPressed->code == sf::Keyboard::Key::Enter || keyPressed->code == sf::Keyboard::Key::Space) {
             game->changeState(std::make_unique<MenuState>(game));
         }
@@ -69,11 +76,10 @@ void GameOverState::handleInput(const sf::Event& event) {
 }
 
 void GameOverState::update(float dt) {
-    // You could add a retro blinking effect to promptText here using dt if you wanted,
-    // but for now, it's fine to leave it empty since the state is mostly static.
 }
 
 void GameOverState::render(sf::RenderTarget& target) {
+    target.draw(bgSprite);
     target.draw(resultText);
     target.draw(scoreText);
     target.draw(promptText);

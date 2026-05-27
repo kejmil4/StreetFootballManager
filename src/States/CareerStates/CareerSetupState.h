@@ -18,10 +18,12 @@ private:
     std::vector<sf::Text> menuOptions;
     int selectedIndex;
 
-    // Setup Variables
     int selectedPitch;
     int selectedLogo;
     int selectedArchetype;
+
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
 
     void refreshUI();
 
