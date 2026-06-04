@@ -2,6 +2,15 @@
 
 A highly customizable, retro-styled street football game featuring both an active physics-based Match Engine and a deep, multi-week Career Simulation. Built completely from scratch in C++ using the SFML graphics library.
 
+## 🚀 How to Play (No Installation Required)
+
+You don't need to install any compilers or IDEs to play the game! Just follow these steps:
+
+1. Go to the [Releases](https://github.com/kejmil4/StreetFootballManager/releases/tag/v1.0.0) tab on the right side of this page.
+2. Download `StreetFootballManager_v1.0_Windows.zip`.
+3. Extract the `.zip` file anywhere on your computer.
+4. Double-click `StreetFootballManager.exe` and enjoy!
+
 ## 🌟 Game Modes
 * **Career Mode:** Build your crew from the ground up. Buy/sell players, manage your starting lineup, and advance through a fully simulated league complete with standings, top scorer tracking, and a persistent save/load system.
 * **Custom Match (PvE & PvP):** Play a quick match against the AI or a friend (Local Multiplayer). Fully parameterized match settings allow you to customize the Pitch (Asphalt, Mud, Grass), Weather (Clear, Rainy, Snowy), Match Length, and Difficulty.
@@ -21,8 +30,6 @@ This project adheres to strict Object-Oriented Programming (OOP) principles and 
 * **Player 1:** `WASD` to move, `E` to Pass/Switch, `SPACE` to Shoot/Tackle, `LEFT SHIFT` for Lob modifier.
 * **Player 2:** `Arrow Keys` to move, `.` to Pass/Switch, `ENTER` to Shoot/Tackle, `RIGHT SHIFT` for Lob modifier.
 *(Controls can be altered dynamically in the Main Menu -> Settings -> Controls).*
-
-## 🚀 Getting Started
 
 ### Prerequisites
 * **C++17** compatible compiler (GCC, Clang, MSVC)
