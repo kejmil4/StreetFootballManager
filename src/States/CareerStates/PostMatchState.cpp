@@ -10,16 +10,26 @@
 
 PostMatchState::PostMatchState(Game* game, std::shared_ptr<CareerData> careerData, int homeScore, int awayScore, int oppId)
     : GameState(game), career(careerData), matchHomeScore(homeScore), matchAwayScore(awayScore), opponentTeamId(oppId), credEarned(0),
-      titleText(font), scoreText(font), rewardText(font), promptText(font)
+      titleText(font), scoreText(font), rewardText(font), promptText(font), bgSprite(bgTexture)
 {
     if (!font.openFromFile("assets/font.ttf")) {
         std::cerr << "FAILED TO LOAD: assets/font.ttf for PostMatchState!\n";
     }
 
-    // 1. Process the Match Results & Auto-Save
+    std::string bgFilePath = "assets/menus/menuMatchResults.png";
+    if (!bgTexture.loadFromFile(bgFilePath)) {
+        std::cerr << "FAILED TO LOAD BG: " << bgFilePath;
+    }
+    bgSprite.setTexture(bgTexture, true);
+
+    sf::Vector2u textureSize = bgTexture.getSize();
+    float scaleX = static_cast<float>(Config::WINDOW_WIDTH) / textureSize.x;
+    float scaleY = static_cast<float>(Config::WINDOW_HEIGHT) / textureSize.y;
+    bgSprite.setScale({scaleX, scaleY});
+
+    // Process the Match Results & Auto-Save
     calculateRewards();
 
-    // 2. Setup Title Text
     std::string titleStr;
     sf::Color titleColor;
     if (homeScore > awayScore) {
@@ -99,8 +109,13 @@ void PostMatchState::calculateRewards() {
     for (auto& match : career->schedule) {
         if (match.week == career->currentWeek && (match.homeTeamId == 0 || match.awayTeamId == 0)) {
             match.isPlayed = true;
-            match.homeScore = matchHomeScore;
-            match.awayScore = matchAwayScore;
+            if (match.homeTeamId == 0) {
+                match.homeScore = matchHomeScore; // Player is home
+                match.awayScore = matchAwayScore; // AI is away
+            } else {
+                match.homeScore = matchAwayScore; // AI is home
+                match.awayScore = matchHomeScore; // Player is away
+            }
             break;
         }
     }
@@ -114,6 +129,7 @@ void PostMatchState::calculateRewards() {
         }
     }
     LeagueSimulator::simulateWeek(career, career->currentWeek);
+    LeagueSimulator::sortStandings(career);
 
     career->currentWeek += 1;
 
@@ -143,6 +159,7 @@ void PostMatchState::update(float dt) {
 }
 
 void PostMatchState::render(sf::RenderTarget& target) {
+    target.draw(bgSprite);
     target.draw(titleText);
     target.draw(scoreText);
     target.draw(rewardText);

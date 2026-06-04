@@ -44,10 +44,9 @@ GameOverState::GameOverState(Game* game, int homeScore, int awayScore) : GameSta
     resultText.setOrigin({resultBounds.size.x / 2.0f, resultBounds.size.y / 2.0f});
     resultText.setPosition({Config::CENTER_X, Config::CENTER_Y - 150.f});
 
-    // Setup the Score Text
     scoreText.setFont(font);
     scoreText.setString("Final Score: " + std::to_string(homeScore) + " - " + std::to_string(awayScore));
-    scoreText.setCharacterSize(50);
+    scoreText.setCharacterSize(40);
     scoreText.setFillColor(sf::Color::White);
 
     sf::FloatRect scoreBounds = scoreText.getLocalBounds();
@@ -57,7 +56,7 @@ GameOverState::GameOverState(Game* game, int homeScore, int awayScore) : GameSta
     // Setup the Prompt Text
     promptText.setFont(font);
     promptText.setString("Press ENTER to return to Menu");
-    promptText.setCharacterSize(30);
+    promptText.setCharacterSize(25);
     promptText.setFillColor(sf::Color::Cyan);
 
     sf::FloatRect promptBounds = promptText.getLocalBounds();

@@ -9,6 +9,8 @@
 #include "ShopState.h"
 #include <iostream>
 
+#include "PostMatchState.h"
+
 CareerHubState::CareerHubState(Game* game, std::shared_ptr<CareerData> careerData)
     : GameState(game), career(careerData), headerText(font), statsText(font), selectedIndex(0), bgSprite(bgTexture), logoSprite(logoTexture)
 {
@@ -62,9 +64,10 @@ CareerHubState::CareerHubState(Game* game, std::shared_ptr<CareerData> careerDat
             }
         }
     }
-    // 3. Setup the Hub Options
+    // HUB Options
     std::vector<std::string> optionsText = {
         "Play Next Match vs " + opponentName,
+        "Simulate Next Match vs " + opponentName,
         "My Crew (Roster)",
         "The Block (Shop)",
         "League Standings",
@@ -100,104 +103,26 @@ void CareerHubState::handleInput(const sf::Event& event) {
         }
         else if (keyPressed->code == sf::Keyboard::Key::Enter || keyPressed->code == sf::Keyboard::Key::Space) {
             if (selectedIndex == 0) { // "Play Match"
-                int starterCount = 0;
-                for (const auto& p : career->roster) {
-                    if (p.isStarter) starterCount++;
-                }
-
-                if (starterCount != 3) {
-                    std::cout << "ERROR: You must have exactly 3 starters selected!\n";
-                    return;
-                }
-
-                MatchSettings careerSettings;
-                careerSettings.teamSize = 3;
-                careerSettings.homeHumans = 1;
-                careerSettings.awayHumans = 0;
-                careerSettings.careerSave = career;
-
-                bool isPlayerHome = false; //
-
-                for (const auto& match : career->schedule) {
-                    if (match.week == career->currentWeek) {
-                        if (match.homeTeamId == 0) {
-                            careerSettings.opponentTeamId = match.awayTeamId;
-                            isPlayerHome = true;
-                        } else if (match.awayTeamId == 0) {
-                            careerSettings.opponentTeamId = match.homeTeamId;
-                            isPlayerHome = false;
-                        }
-                        break;
-                    }
-                }
-
-                if (isPlayerHome) {
-                    careerSettings.logoId = career->logoId;
-                    careerSettings.pitch = career->homePitch;
-                } else {
-                    for (const auto& team : career->leagueTable) {
-                        if (team.id == careerSettings.opponentTeamId) {
-                            careerSettings.logoId = team.logoId;
-                            careerSettings.pitch = team.homePitch;
-                            break;
-                        }
-                    }
-                }
-
-                careerSettings.weather = WeatherType::Clear;
-                careerSettings.difficulty = Difficulty::Medium;
-
-                game->changeState(std::make_unique<MatchState>(game, careerSettings));
+                prepareNextMatch();
             }
-
-            // if (selectedIndex == 0) { // "Play Next Match"
-            //
-            //
-            //
-            //     MatchSettings careerSettings;
-            //     careerSettings.teamSize = 3;
-            //     careerSettings.homeHumans = 1;
-            //     careerSettings.awayHumans = 0;
-            //     careerSettings.careerSave = career;
-            //
-            //     for (const auto& match : career->schedule) {
-            //         if (match.week == career->currentWeek) {
-            //             if (match.homeTeamId == 0) careerSettings.opponentTeamId = match.awayTeamId;
-            //             else if (match.awayTeamId == 0) careerSettings.opponentTeamId = match.homeTeamId;
-            //             break;
-            //         }
-            //     }
-            //
-            //     careerSettings.pitch = PitchType::Asphalt;
-            //     careerSettings.weather = WeatherType::Clear;
-            //     careerSettings.difficulty = Difficulty::Medium;
-            //
-            //     if (careerSettings.opponentTeamId != -1) {
-            //         for (const auto& team : career->leagueTable) {
-            //             if (team.id == careerSettings.opponentTeamId) {
-            //                 careerSettings.logoId = team.logoId;
-            //                 careerSettings.pitch = team.homePitch;
-            //                 break;
-            //             }
-            //         }
-            //     }
-            //
-            //     game->changeState(std::make_unique<MatchState>(game, careerSettings));
-            // }
-            else if (selectedIndex == 1) { // "My Crew"
+            else if (selectedIndex == 1 ) { // "Simulate Match"
+                simulateNextMatch();
+            }
+            else if (selectedIndex == 2) { // "My Crew"
                 game->changeState(std::make_unique<ClubState>(game, career));
             }
-            else if (selectedIndex == 2) { // "The Block"
+            else if (selectedIndex == 3) { // "The Block"
                 game->changeState(std::make_unique<ShopState>(game, career));
             }
-            else if (selectedIndex == 3) { // Assuming index 3 is "League Standings"
+            else if (selectedIndex == 4) { // "League Standings"
                 game->changeState(std::make_unique<StandingsState>(game, career));
             }
-            else if (selectedIndex == 4) {
+            else if (selectedIndex == 5) { // "Top Scorer"
                 game->changeState(std::make_unique<TopScorersState>(game, career));
             }
-            else if (selectedIndex == 5) {
-                // TODO: Save to file here!
+            else if (selectedIndex == 6) {
+                career->saveToFile();
+
                 game->changeState(std::make_unique<MenuState>(game));
             }
         }
@@ -221,5 +146,96 @@ void CareerHubState::render(sf::RenderTarget& target) {
     target.draw(statsText);
     for (auto& option : menuOptions) {
         target.draw(option);
+    }
+}
+
+void CareerHubState::prepareNextMatch() {
+    int starterCount = 0;
+    for (const auto& p : career->roster) {
+        if (p.isStarter) starterCount++;
+    }
+
+    if (starterCount != 3) {
+        std::cout << "ERROR: You must have exactly 3 starters selected!\n";
+        return;
+    }
+
+    MatchSettings careerSettings;
+    careerSettings.teamSize = 3;
+    careerSettings.homeHumans = 1;
+    careerSettings.awayHumans = 0;
+    careerSettings.careerSave = career;
+
+    bool isPlayerHome = false; //
+
+    for (const auto& match : career->schedule) {
+        if (match.week == career->currentWeek) {
+            if (match.homeTeamId == 0) {
+                careerSettings.opponentTeamId = match.awayTeamId;
+                isPlayerHome = true;
+            } else if (match.awayTeamId == 0) {
+                careerSettings.opponentTeamId = match.homeTeamId;
+                isPlayerHome = false;
+            }
+            break;
+        }
+    }
+
+    if (isPlayerHome) {
+        careerSettings.logoId = career->logoId;
+        careerSettings.pitch = career->homePitch;
+    } else {
+        for (const auto& team : career->leagueTable) {
+            if (team.id == careerSettings.opponentTeamId) {
+                careerSettings.logoId = team.logoId;
+                careerSettings.pitch = team.homePitch;
+                break;
+            }
+        }
+    }
+
+    careerSettings.weather = WeatherType::Clear;
+    careerSettings.difficulty = Difficulty::Medium;
+
+    game->changeState(std::make_unique<MatchState>(game, careerSettings));
+}
+
+
+void CareerHubState::simulateNextMatch() {
+    int oppId = -1;
+
+    for (const auto& match : career->schedule) {
+        if (match.week == career->currentWeek) {
+            if (match.homeTeamId == 0) {
+                oppId = match.awayTeamId;
+                break;
+            }
+            else if (match.awayTeamId == 0) {
+                oppId = match.homeTeamId;
+                break;
+            }
+        }
+    }
+
+    if (oppId != -1) {
+        float playerPower = 0.f;
+        int starterCount = 0;
+        for (const auto& p : career->roster) {
+            if (p.isStarter) {
+                playerPower += (p.stats.speed + p.stats.shooting + p.stats.passing + p.stats.tackling) / 4.0f;
+                starterCount++;
+            }
+        }
+        if (starterCount > 0) playerPower /= starterCount;
+
+        float oppPower = career->leagueTable[oppId].teamAverageStats.speed;
+
+        int playerScore = rand() % 4;
+        int oppScore = rand() % 4;
+
+        if (playerPower > oppPower + 10.f) playerScore += 1 + (rand() % 2);
+        else if (oppPower > playerPower + 10.f) oppScore += 1 + (rand() % 2);
+
+        game->changeState(std::make_unique<PostMatchState>(game, career, playerScore, oppScore, oppId));
     }
 }

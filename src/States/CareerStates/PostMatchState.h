@@ -19,6 +19,9 @@ private:
     sf::Text rewardText;
     sf::Text promptText;
 
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
+
     void calculateRewards();
     void saveCareer();
 

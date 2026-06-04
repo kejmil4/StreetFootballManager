@@ -21,6 +21,9 @@ private:
     sf::Texture logoTexture;
     sf::Sprite logoSprite;
 
+    void prepareNextMatch();
+    void simulateNextMatch();
+
 public:
     CareerHubState(Game* game, std::shared_ptr<CareerData> careerData);
     ~CareerHubState() override = default;
