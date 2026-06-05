@@ -4,6 +4,10 @@ set(CMAKE_POLICY_VERSION_MINIMUM "3.5" CACHE STRING "" FORCE)
 
 project(StreetFootballManager)
 
+if(WIN32 AND MINGW)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive")
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 
 include(FetchContent)
@@ -83,6 +87,7 @@ add_executable(StreetFootballManager
         src/States/AudioSettingsState.h
         src/States/CareerStates/LoadCareerState.cpp
         src/States/CareerStates/LoadCareerState.h
+        src/resource.rc
 )
 
 target_link_libraries(StreetFootballManager PRIVATE

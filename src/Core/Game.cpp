@@ -2,14 +2,21 @@
 #include "../States/MatchState.h"
 #include "Config.h"
 #include "../States/MenuState.h"
+#include <SFML/Graphics/Image.hpp>
 
 Game::Game() {
     window.create(sf::VideoMode({Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT}),
         "Street Football Manager",
         sf::Style::Default
-        // ,sf::State::Fullscreen
         );
     window.setFramerateLimit(60);
+
+    sf::Image icon;
+    if (icon.loadFromFile("assets/StreetFootballManagerLogo.png")) {
+        window.setIcon(icon.getSize(), icon.getPixelsPtr());
+    } else {
+        std::cerr << "WARNING: Failed to load assets/icon.png for taskbar!\n";
+    }
 
     Config::loadSettings();
 
