@@ -9,18 +9,21 @@ AIBrain::AIBrain(Footballer* owner, Ball* ball, const std::vector<std::unique_pt
 }
 
 void AIBrain::update(float dt) {
+    // Relinquish control if a human player is currently controlling this footballer
     if (owner->getIsHuman()) return;
 
     if (passCooldownTimer > 0.f) passCooldownTimer -= dt;
 
+    // 1. Determine the appropriate tactical role
     evaluateState();
 
+    // Trigger a brief pass cooldown when newly receiving the ball to prevent instant, unnatural passes
     if (currentState == AIBrainState::Attacking_OnBall && previousState != AIBrainState::Attacking_OnBall) {
         passCooldownTimer = 0.4f;
     }
     previousState = currentState;
 
-    // 2. Execute the specific behavior
+    // 2. Execute the physical movement/actions dictated by the role
     switch (currentState) {
         case AIBrainState::Loose_Chasing:        executeLooseChasing(); break;
         case AIBrainState::Loose_Supporting:     executeLooseSupporting(); break;
@@ -33,7 +36,9 @@ void AIBrain::update(float dt) {
 
 void AIBrain::evaluateState() {
     Team possessionTeam = targetBall->getPossessionTeam();
-    bool amIClosest = checkIfClosestTeammateToBall(40.f); // 40px anti-flicker buffer
+
+    // Check proximity with a 40px buffer to prevent rapid state-toggling between teammates
+    bool amIClosest = checkIfClosestTeammateToBall(40.f);
 
     if (possessionTeam == Team::None) {
         currentState = amIClosest ? AIBrainState::Loose_Chasing : AIBrainState::Loose_Supporting;
@@ -52,7 +57,8 @@ bool AIBrain::checkIfClosestTeammateToBall(float hysteresisBuffer) {
     float dy = owner->getPosition().y - ballPos.y;
     float myDist = std::hypot(dx, dy);
 
-    // Give current chasers a mathematical discount to prevent role-flickering
+    // Apply hysteresis: Give the player already executing a chasing role a mathematical
+    // distance discount. This prevents two equidistant players from stuttering/swapping roles constantly.
     if (currentState == AIBrainState::Loose_Chasing || currentState == AIBrainState::Defending_Pressing) {
         myDist -= hysteresisBuffer;
     }
@@ -65,12 +71,12 @@ bool AIBrain::checkIfClosestTeammateToBall(float hysteresisBuffer) {
                 float mateDist = std::hypot(t_dx, t_dy);
 
                 if (mateDist < myDist) {
-                    return false; // A teammate is closer
+                    return false; // Found a closer teammate
                 }
             }
         }
     }
-    return true; // I am the closest!
+    return true; // Confirmed as the closest player to the ball
 }
 
 // --- STATE BEHAVIORS ---
@@ -83,18 +89,18 @@ void AIBrain::executeLooseSupporting() {
     sf::Vector2f ballPos = targetBall->getPosition();
     float pushDirection = (owner->getTeam() == Team::Home) ? 1.0f : -1.0f;
 
-    // Find if I am the "top" or "bottom" supporting player
+    // Determine vertical hierarchy among supporting players to fan out properly
     bool pushWide = false;
     for (const auto& obj : *environment) {
         if (auto teammate = dynamic_cast<Footballer*>(obj.get())) {
             if (teammate != owner && teammate->getTeam() == owner->getTeam()) {
                 if (owner->getPosition().y > teammate->getPosition().y) {
-                    pushWide = true;
+                    pushWide = true; // This AI is lower on the pitch than their teammate
                 }
             }
         }
     }
-
+    // Position diagonally behind the ball to recover rebounds or missed passes
     sf::Vector2f newTarget;
     if (pushWide) {
         newTarget = { ballPos.x + (100.f * pushDirection), ballPos.y + 150.f };
@@ -105,25 +111,24 @@ void AIBrain::executeLooseSupporting() {
 }
 
 void AIBrain::executeAttackingOnBall() {
-    // Determine where the enemy goal is
     float goalX = (owner->getTeam() == Team::Home) ? Config::PITCH_RIGHT_X : Config::PITCH_LEFT_X;
     float goalY = Config::CENTER_Y;
-
     float distToGoal = std::hypot(goalX - owner->getPosition().x, goalY - owner->getPosition().y);
 
-    // 1. THE NEW SHOOTING LOGIC!
-    if (distToGoal < 450.f) { // If within 450 pixels of the goal, take a shot!
+    // --- Phase 1: Shooting ---
+    // Take a shot if within realistic scoring range (450 pixels)
+    if (distToGoal < 450.f) {
         float dirX = (goalX - owner->getPosition().x) / distToGoal;
         float dirY = (goalY - owner->getPosition().y) / distToGoal;
 
-        // Add a tiny bit of random inaccuracy so they don't always snipe the exact center
+        // Introduce minor random variance to the shot angle so bots aren't pixel-perfect
         float randOffset = ((rand() % 100) / 100.f - 0.5f) * 0.3f;
 
         owner->kickBall({dirX * 450.f, (dirY + randOffset) * 450.f, 150.f});
-        return; // They shot the ball, so stop thinking!
+        return;
     }
 
-    // 2. THE PANIC/PASSING LOGIC (Keep your existing passing logic here)
+    // --- Phase 2: Threat Assessment & Passing ---
     float closestEnemyDist = 9999.f;
     Footballer* bestPassTarget = nullptr;
     float bestPassScore = (owner->getTeam() == Team::Home) ? -9999.f : 9999.f;
@@ -132,9 +137,11 @@ void AIBrain::executeAttackingOnBall() {
         if (auto f = dynamic_cast<Footballer*>(obj.get())) {
             if (f != owner) {
                 if (f->getTeam() != owner->getTeam()) {
+                    // Track nearest enemy pressure
                     float dist = std::hypot(f->getPosition().x - owner->getPosition().x, f->getPosition().y - owner->getPosition().y);
                     if (dist < closestEnemyDist) closestEnemyDist = dist;
                 } else {
+                    // Find the teammate furthest down the pitch towards the enemy goal
                     if (owner->getTeam() == Team::Home) {
                         if (f->getPosition().x > bestPassScore) { bestPassScore = f->getPosition().x; bestPassTarget = f; }
                     } else {
@@ -145,10 +152,10 @@ void AIBrain::executeAttackingOnBall() {
         }
     }
 
-    // THE NEW PASS EXECUTION & SPAM PREVENTION
+    // Attempt a pass if under pressure (enemy within 150px), off cooldown, and a target exists
     if (passCooldownTimer <= 0.f && closestEnemyDist < 150.f && bestPassTarget) {
 
-        // 1. Check if we are spamming the same teammate
+        // Track passing targets to prevent two AI players from infinitely ping-ponging the ball
         if (bestPassTarget == lastPassTarget) {
             passSpamCount++;
         } else {
@@ -156,16 +163,15 @@ void AIBrain::executeAttackingOnBall() {
             passSpamCount = 1;
         }
 
-        // 2. If we passed to the same guy 3 times, FORCE A DRIBBLE!
+        // Force a dribble and apply a heavy cooldown if ping-ponging is detected
         if (passSpamCount >= 3) {
-            passCooldownTimer = 1.5f; // Lock out passing for 1.5 seconds!
-            passSpamCount = 0;        // Reset the count
-
-            owner->setTargetPos({goalX, goalY}); // Force them to drive forward
+            passCooldownTimer = 1.5f;
+            passSpamCount = 0;
+            owner->setTargetPos({goalX, goalY});
             return;
         }
 
-        // 3. Execute the Pass
+        // Execute the pass vector towards the chosen teammate
         float dx = bestPassTarget->getPosition().x - owner->getPosition().x;
         float dy = bestPassTarget->getPosition().y - owner->getPosition().y;
         float dist = std::hypot(dx, dy);
@@ -175,19 +181,14 @@ void AIBrain::executeAttackingOnBall() {
         }
 
         owner->kickBall({(dx / dist) * 400.f, (dy / dist) * 400.f, 15.f});
-
-        // Put passing on cooldown so they can't machine-gun it
-        passCooldownTimer = 0.5f;
+        passCooldownTimer = 0.5f; // Standard cooldown
 
     } else {
-        // THE DRIBBLE LOGIC
-        // If passing is on cooldown, or no enemies are near, drive toward the goal!
+        // --- Phase 3: Dribbling ---
+        // If passing is unavailable or not under pressure, drive directly toward the enemy goal
         owner->setTargetPos({goalX, goalY});
     }
 }
-
-
-// --- STATE BEHAVIORS ---
 
 void AIBrain::executeDefendingPressing() {
     Footballer* carrier = targetBall->getCarrier();
@@ -207,24 +208,23 @@ void AIBrain::executeDefendingPressing() {
 
 
 void AIBrain::executeDefendingCovering() {
-    // Goal: Form a defensive wall between the ball and our goal.
     float myGoalX = (owner->getTeam() == Team::Home) ? Config::PITCH_LEFT_X : Config::PITCH_RIGHT_X;
     sf::Vector2f myGoal(myGoalX, Config::CENTER_Y);
     sf::Vector2f ballPos = targetBall->getPosition();
 
-    // 1. Figure out if I am the "Top" or "Bottom" covering defender
+    // Determine vertical hierarchy to build a properly spaced defensive wall
     bool coverHigh = false;
     for (const auto& obj : *environment) {
         if (auto teammate = dynamic_cast<Footballer*>(obj.get())) {
             if (teammate != owner && teammate->getTeam() == owner->getTeam()) {
                 if (owner->getPosition().y < teammate->getPosition().y) {
-                    coverHigh = true; // Smaller Y means higher on the screen
+                    coverHigh = true;
                 }
             }
         }
     }
 
-    // 2. Draw a line from our goal to the ball
+    // Calculate a defensive vector from our goal to the ball
     float dx = ballPos.x - myGoal.x;
     float dy = ballPos.y - myGoal.y;
     float dist = std::hypot(dx, dy);
@@ -234,15 +234,15 @@ void AIBrain::executeDefendingCovering() {
         float dirX = dx / dist;
         float dirY = dy / dist;
 
-        // Base position: 350 pixels out from our goal, looking at the ball.
+        // Establish a baseline defensive distance 350px out from the goal.
+        // If the ball breaches this perimeter, pull the defenders closer to the ball.
         float coverDist = 350.f;
-        // If the ball is closer than 350px, don't run past it! Stand halfway.
         if (dist < coverDist) coverDist = dist / 1.5f;
 
         float baseX = myGoal.x + (dirX * coverDist);
         float baseY = myGoal.y + (dirY * coverDist);
 
-        // 3. Fan out perpendicular to the ball to block passing lanes
+        // Calculate perpendicular offsets to fan defenders out and block passing lanes
         float offsetX = -dirY * 150.f;
         float offsetY = dirX * 150.f;
 
@@ -262,11 +262,9 @@ void AIBrain::executeDefendingCovering() {
 void AIBrain::executeAttackingSupporting() {
     Footballer* carrier = targetBall->getCarrier();
     if (!carrier) return;
-
-    // Goal: Run forward and fan out wide to give the ball carrier passing options
     float attackDirX = (owner->getTeam() == Team::Home) ? 1.0f : -1.0f;
 
-    // 1. Figure out if I am the "Top" or "Bottom" attacking support
+    // Determine vertical hierarchy to ensure players don't stack on top of each other
     bool pushHigh = false;
     for (const auto& obj : *environment) {
         if (auto teammate = dynamic_cast<Footballer*>(obj.get())) {
@@ -278,11 +276,11 @@ void AIBrain::executeAttackingSupporting() {
         }
     }
 
-    // 2. Push 300 pixels AHEAD of the ball carrier, and 250 pixels WIDE (up or down)
+    // Push ahead of the ball carrier to offer aggressive forward passing options
     float targetX = carrier->getPosition().x + (300.f * attackDirX);
     float targetY = carrier->getPosition().y + (pushHigh ? -250.f : 250.f);
 
-    // 3. Prevent them from running off the top/bottom edges of the pitch
+    // Clamp Y positions to keep supporting AI on the pitch
     if (targetY < Config::PITCH_TOP_Y + 50.f) targetY = Config::PITCH_TOP_Y + 50.f;
     if (targetY > Config::PITCH_BOTTOM_Y - 50.f) targetY = Config::PITCH_BOTTOM_Y - 50.f;
 

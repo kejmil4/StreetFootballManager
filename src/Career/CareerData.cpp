@@ -1,54 +1,68 @@
 #include "CareerData.h"
 #include <iostream>
 
-// --- HELPER: SAVE A SINGLE PLAYER ---
+// --- Serialization Helpers ---
+
+/**
+ * Serializes a single player's data into the output stream.
+ * Format:
+ * [Name]
+ * [Speed] [Shooting] [Passing] [Tackling] [Stamina]
+ * [Cost] [IsStarter] [GoalsScored]
+ */
 void CareerData::savePlayer(std::ofstream& out, const CareerPlayer& p) {
-    out << p.name << "\n"; // Save string on its own line
+    out << p.name << "\n";
     out << p.stats.speed << " " << p.stats.shooting << " " << p.stats.passing << " "
         << p.stats.tackling << " " << p.stats.maxStamina << "\n";
     out << p.cost << " " << p.isStarter << " " << p.goalsScored << "\n";
 }
 
-// --- HELPER: LOAD A SINGLE PLAYER ---
+/**
+ * Deserializes a single player's data from the input stream.
+ */
 void CareerData::loadPlayer(std::ifstream& in, CareerPlayer& p) {
     std::getline(in, p.name);
     in >> p.stats.speed >> p.stats.shooting >> p.stats.passing >> p.stats.tackling >> p.stats.maxStamina;
     in >> p.cost >> p.isStarter >> p.goalsScored;
 
-    // CRITICAL C++ TRICK: Consume the trailing newline after reading numbers
-    // so the NEXT time we use std::getline, it doesn't read an empty string!
+    // Note: When mixing stream extraction (>>) with std::getline, extraction leaves
+    // the trailing newline character (\n) in the buffer. We must consume it here,
+    // otherwise the next std::getline call will immediately read an empty string.
     std::string dummy;
     std::getline(in, dummy);
 }
 
-// ==========================================
-// THE MAIN SAVE FUNCTION
-// ==========================================
+// --- Main I/O Operations ---
+
+/**
+ * Saves the current campaign state to a plain text file.
+ * We use a custom sequential text format to keep saves lightweight and easily modifiable.
+ */
 bool CareerData::saveToFile() {
     std::ofstream out(getSaveFileName());
     if (!out.is_open()) return false;
 
-    // 1. Core Data
+    // Block 1: Core Team Data
     out << teamName << "\n";
     out << streetCred << " " << currentWeek << " " << static_cast<int>(homePitch) << " " << logoId << "\n";
 
-    // 2. Player Roster
+    // Block 2: Player Roster
     out << roster.size() << "\n";
     for (const auto& p : roster) {
         savePlayer(out, p);
     }
 
-    // 3. League Table (Standings & AI Rosters)
+    // Block 3: League Table (Standings & AI Rosters)
     out << leagueTable.size() << "\n";
     for (const auto& team : leagueTable) {
         out << team.id << "\n";
         out << team.name << "\n";
 
-        // Stats & Identity
+        // Team Stats & Identity
         out << team.teamAverageStats.speed << "\n";
         out << static_cast<int>(team.homePitch) << " " << team.logoId << "\n";
 
-        // Standings
+        // Season Standings
         out << team.points << " " << team.wins << " " << team.draws << " " << team.losses << " "
             << team.goalsFor << " " << team.goalsAgainst << "\n";
 
@@ -57,7 +71,7 @@ bool CareerData::saveToFile() {
         for (const auto& p : team.roster) savePlayer(out, p);
     }
 
-    // 4. Schedule
+    // Block 4: Match Schedule
     out << schedule.size() << "\n";
     for (const auto& f : schedule) {
         out << f.week << " " << f.homeTeamId << " " << f.awayTeamId << " "
@@ -68,24 +82,24 @@ bool CareerData::saveToFile() {
     return true;
 }
 
-// ==========================================
-// THE MAIN LOAD FUNCTION
-// ==========================================
+/**
+ * Reconstructs the campaign state by parsing the formatted text file.
+ */
 bool CareerData::loadFromFile(const std::string& filepath) {
     std::ifstream in(filepath);
     if (!in.is_open()) return false;
 
     std::string dummy;
 
-    // 1. Core Data
+    // Block 1: Core Team Data
     std::getline(in, teamName);
 
     int pitchInt;
     in >> streetCred >> currentWeek >> pitchInt >> logoId;
     homePitch = static_cast<PitchType>(pitchInt);
-    std::getline(in, dummy); // Consume newline
+    std::getline(in, dummy);// Consume trailing newline
 
-    // 2. Player Roster
+    // Block 2: Player Roster
     int rosterSize;
     in >> rosterSize;
     std::getline(in, dummy);
@@ -96,7 +110,7 @@ bool CareerData::loadFromFile(const std::string& filepath) {
         roster.push_back(p);
     }
 
-    // 3. League Table
+    // Block 3: League Table
     int tableSize;
     in >> tableSize;
     std::getline(in, dummy);
@@ -108,6 +122,7 @@ bool CareerData::loadFromFile(const std::string& filepath) {
 
         std::getline(in, team.name);
 
+        // Load simplified average stats for simulated matches
         float avgStat;
         in >> avgStat;
         team.teamAverageStats = {avgStat, avgStat, avgStat, avgStat, avgStat};
@@ -130,7 +145,7 @@ bool CareerData::loadFromFile(const std::string& filepath) {
         leagueTable.push_back(team);
     }
 
-    // 4. Schedule
+    // Block 4: Match Schedule
     int scheduleSize;
     in >> scheduleSize;
     std::getline(in, dummy);

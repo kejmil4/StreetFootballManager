@@ -3,7 +3,14 @@
 #include <fstream>
 #include <iostream>
 
+/**
+ * @namespace Config
+ * @brief Global configuration namespace.
+ * Contains hardcoded dimensional constants, default input bindings,
+ * and rudimentary serialization for user settings (volume and controls).
+ */
 namespace Config {
+    // --- Display Settings ---
     constexpr unsigned int WINDOW_WIDTH = 1920;
     constexpr unsigned int WINDOW_HEIGHT = 1080;
 
@@ -11,25 +18,27 @@ namespace Config {
     constexpr float CENTER_Y = WINDOW_HEIGHT / 2.0f;
 
 
-    // --- NEW: PITCH PLAYABLE BOUNDARIES ---
-    // Based on 480x270 scaled by 4x. (20px horizontal padding, 10px vertical)
+    // --- Pitch Boundaries ---
+    // Scaled 4x from a retro 480x270 base resolution to fit modern screens,
+    // maintaining a 20px horizontal and 10px vertical playable padding.
     constexpr float PITCH_LEFT_X = 230.f;
     constexpr float PITCH_RIGHT_X = 1690.f;
     constexpr float PITCH_TOP_Y = 180.f;
     constexpr float PITCH_BOTTOM_Y = 880.f;
 
-    // --- NEW: STREET GOAL DIMENSIONS ---
-    // Based on a 64px high goal centered vertically
+    // --- Street Goal Dimensions ---
     constexpr float GOAL_TOP_Y = 415.f;
     constexpr float GOAL_BOTTOM_Y = 665.f;
 
-
+    // --- Input Configuration ---
     struct PlayerBinds {
         sf::Keyboard::Key up, down, left, right;
         sf::Keyboard::Key passSwitch;   // Offense: Pass | Defense: Switch Player
         sf::Keyboard::Key shootTackle;  // Offense: Shoot | Defense: Tackle
         sf::Keyboard::Key lobModifier;  // Modifies pass/shoot into a lob/chip
     };
+
+    // Global instances holding current keybinds and audio levels
 
     // Player 1 Defaults (WASD, E, Space, LShift)
     inline PlayerBinds p1Binds = {
@@ -48,6 +57,10 @@ namespace Config {
     inline float musicVolume  = 50.f;
     inline float sfxVolume    = 80.f;
 
+    /**
+     * Serializes current settings to a local text file.
+     * Casts sf::Keyboard::Key enums to integers for safe plain-text storage.
+     */
 
     inline void saveSettings() {
         std::ofstream file("settings.txt");
@@ -78,6 +91,9 @@ namespace Config {
         }
     }
 
+    /**
+     * Deserializes settings from the local text file on startup.
+     */
     inline void loadSettings() {
         std::ifstream file("settings.txt");
 

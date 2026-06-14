@@ -14,6 +14,8 @@ void HumanController::update(float dt) {
     sf::Vector2f moveDir(0.f, 0.f);
     bool passKey, shootKey, modKey;
 
+    // --- 1. Hardware Input Polling ---
+    // Read key states based on which local player this controller belongs to
     if (id == ControllerID::Player1) {
         if (sf::Keyboard::isKeyPressed(Config::p1Binds.up)) moveDir.y -= 1.f;
         if (sf::Keyboard::isKeyPressed(Config::p1Binds.down)) moveDir.y += 1.f;
@@ -34,7 +36,9 @@ void HumanController::update(float dt) {
         modKey   = sf::Keyboard::isKeyPressed(Config::p2Binds.lobModifier);
     }
 
-    // Normalize movement
+    // --- 2. Movement Application ---
+    // Normalize diagonal movement to prevent players from running faster
+    // when pressing two keys simultaneously (the "strafing speed boost" bug).
     if (moveDir.x != 0.f && moveDir.y != 0.f) {
         float length = std::hypot(moveDir.x, moveDir.y);
         moveDir.x /= length;
@@ -44,130 +48,87 @@ void HumanController::update(float dt) {
     // Apply movement
     owner->setVelocity(moveDir * owner->getStats().speed);
 
-    // If we aren't pressing WASD, our "Aim Direction" defaults to the way we are facing
+    // Track intent: If the player isn't moving, their "aim" defaults to the direction their sprite is facing
     sf::Vector2f aimDir = moveDir;
     if (aimDir.x == 0.f && aimDir.y == 0.f) {
         aimDir.x = owner->getFacingDirection();
     }
 
 
-    // ==========================================
-    // 2. THE 'E' KEY: Passing & Switching
-    // ==========================================
+    // --- 3. Contextual Action: Pass (Offense) / Switch (Defense) ---
     if (passKey && actionCooldown <= 0.f) {
-        actionCooldown = 0.3f;
+        actionCooldown = 0.3f;// Prevent input spam
+
             if (owner->getPossession()) {
-            // 1. Determine the exact direction the player is holding
-            sf::Vector2f aimDir = moveDir;
 
-            // If they are standing completely still, default to kicking forward!
-            if (aimDir.x == 0.f && aimDir.y == 0.f) {
-                // Assuming Team 0 attacks Right, Team 1 attacks Left
-                aimDir.x = (owner->getFacingDirection() == 0) ? 1.f : -1.f;
-            } else {
-                // Normalize the aim direction
-                float len = std::hypot(aimDir.x, aimDir.y);
-                aimDir.x /= len;
-                aimDir.y /= len;
-            }
-
-            // 2. Try to find a teammate using your dot product rule
-            Footballer* bestTarget = findBestPassTarget(aimDir);
-
-            if (bestTarget) {
-                // --- NEW LOGIC: PREDICTIVE TARGETED PASS ---
-                float initialDx = bestTarget->getPosition().x - owner->getPosition().x;
-                float initialDy = bestTarget->getPosition().y - owner->getPosition().y;
-                float initialDist = std::hypot(initialDx, initialDy);
-
-                // Check for Lob Modifier
-                bool isLob = modKey;
-                float passSpeed = isLob ? 380.f : 450.f;
-                float launchHeight = isLob ? 320.f : 15.f;
-
-                // Predictive Math (Leading the receiver)
-                float timeToReach = initialDist / passSpeed;
-                sf::Vector2f targetVel = bestTarget->getVelocity();
-                sf::Vector2f predictedPos = bestTarget->getPosition();
-
-                if (std::hypot(targetVel.x, targetVel.y) > 10.f) {
-                    predictedPos.x += (targetVel.x * timeToReach);
-                    predictedPos.y += (targetVel.y * timeToReach);
+                // Re-evaluate aim direction for the pass specifically
+                sf::Vector2f aimDir = moveDir;
+                if (aimDir.x == 0.f && aimDir.y == 0.f) {
+                    // Default to attacking direction if standing completely still
+                    aimDir.x = (owner->getFacingDirection() == 0) ? 1.f : -1.f;
+                } else {
+                    // Normalize the aim direction
+                    float len = std::hypot(aimDir.x, aimDir.y);
+                    aimDir.x /= len;
+                    aimDir.y /= len;
                 }
 
-                // Calculate final kick trajectory
-                float dx = predictedPos.x - owner->getPosition().x;
-                float dy = predictedPos.y - owner->getPosition().y;
-                float dist = std::hypot(dx, dy);
+                // Attempt to find a teammate in the general direction the player is aiming
+                Footballer* bestTarget = findBestPassTarget(aimDir);
 
-                // Lock onto receiver and fire!
-                targetBall->setIntendedReceiver(bestTarget);
+                if (bestTarget) {
+                    // TARGETED PASS (Leading the receiver)
+                    float initialDx = bestTarget->getPosition().x - owner->getPosition().x;
+                    float initialDy = bestTarget->getPosition().y - owner->getPosition().y;
+                    float initialDist = std::hypot(initialDx, initialDy);
 
-                // Note: Using your new 3-parameter kick vector (X, Y, Height)
-                owner->kickBall({(dx / dist) * passSpeed, (dy / dist) * passSpeed, launchHeight});
+                    bool isLob = modKey;
+                    float passSpeed = isLob ? 380.f : 450.f;
+                    float launchHeight = isLob ? 320.f : 15.f;
 
-            }
-            else {
-                // --- EXISTING LOGIC: THE CLEARANCE / BLIND PASS ---
-                // No teammate was found in that direction. Boot it into open space!
+                    // Predictive Physics: Calculate how long the ball will take to reach the target,
+                    // and aim for where the target *will* be, rather than where they are right now.
+                    float timeToReach = initialDist / passSpeed;
+                    sf::Vector2f targetVel = bestTarget->getVelocity();
+                    sf::Vector2f predictedPos = bestTarget->getPosition();
 
-                float clearanceSpeed = 400.f;
-                float clearanceHeight = 50.f;
+                    if (std::hypot(targetVel.x, targetVel.y) > 10.f) {
+                        predictedPos.x += (targetVel.x * timeToReach);
+                        predictedPos.y += (targetVel.y * timeToReach);
+                    }
 
-                // If they hold the Lob Modifier, boot it high into the air!
-                if (modKey) {
-                    clearanceSpeed = 250.f;  // Hangs in the air longer
-                    clearanceHeight = 320.f;
+                    // Calculate final kick vector towards the predicted position
+                    float dx = predictedPos.x - owner->getPosition().x;
+                    float dy = predictedPos.y - owner->getPosition().y;
+                    float dist = std::hypot(dx, dy);
+
+                    targetBall->setIntendedReceiver(bestTarget);
+
+                    owner->kickBall({(dx / dist) * passSpeed, (dy / dist) * passSpeed, launchHeight});
+
+                }
+                else {
+                    // BLIND CLEARANCE
+                    // No teammate was found in the aim direction. Boot the ball into open space.
+                    float clearanceSpeed = 400.f;
+                    float clearanceHeight = 50.f;
+
+                    // Modifier hangs the ball high in the air to allow the team to push up
+                    if (modKey) {
+                        clearanceSpeed = 250.f;
+                        clearanceHeight = 320.f;
+                    }
+
+                    targetBall->setIntendedReceiver(nullptr); // Release ball to open play
+
+                    owner->kickBall({aimDir.x * clearanceSpeed, aimDir.y * clearanceSpeed, clearanceHeight});
+
                 }
 
-                targetBall->setIntendedReceiver(nullptr); // No target, it's a free ball!
-
-                owner->kickBall({aimDir.x * clearanceSpeed, aimDir.y * clearanceSpeed, clearanceHeight});
-
-            }
-
-            actionCooldown = 0.3f; // Prevent input spam
+                // actionCooldown = 0.3f; // Prevent input spam
         }
-        // if (owner->getPossession()) {
-        //     // OFFENSE: Pass the ball
-        //     Footballer* bestTarget = findBestPassTarget(aimDir);
-        //     if (bestTarget) {
-        //
-        //         float initialDx = bestTarget->getPosition().x - owner->getPosition().x;
-        //         float initialDy = bestTarget->getPosition().y - owner->getPosition().y;
-        //         float initialDist = std::hypot(initialDx, initialDy);
-        //
-        //         // 1. CHECK FOR LOB MODIFIER
-        //         bool isLob = modKey;
-        //
-        //         // Adjust speeds: High passes hang in the air longer, so we adjust horizontal travel
-        //         float passSpeed = isLob ? 380.f : 450.f;
-        //         float launchHeight = isLob ? 320.f : 15.f;
-        //
-        //         // 2. PREDICTIVE MATH (Leading the receiver)
-        //         float timeToReach = initialDist / passSpeed;
-        //         sf::Vector2f targetVel = bestTarget->getVelocity();
-        //         sf::Vector2f predictedPos = bestTarget->getPosition();
-        //
-        //         if (std::hypot(targetVel.x, targetVel.y) > 10.f) {
-        //             predictedPos.x += (targetVel.x * timeToReach);
-        //             predictedPos.y += (targetVel.y * timeToReach);
-        //         }
-        //
-        //         // 3. Fire the Ball
-        //         float dx = predictedPos.x - owner->getPosition().x;
-        //         float dy = predictedPos.y - owner->getPosition().y;
-        //         float dist = std::hypot(dx, dy);
-        //
-        //         targetBall->setIntendedReceiver(bestTarget);
-        //
-        //         // Apply the trajectory!
-        //         owner->kickBall({(dx / dist) * passSpeed, (dy / dist) * passSpeed, launchHeight});
-        //     }
-        //
-        // }
         else {
-            // DEFENSE: Switch player to whoever is closest to the ball
+            // DEFENSE: Surrender control of current player and jump to the one nearest the ball
             Footballer* closestToBall = findClosestTeammateToBall();
             if (closestToBall && teamManager) {
                 teamManager->switchHumanControl(closestToBall, this->id);
@@ -176,15 +137,11 @@ void HumanController::update(float dt) {
     }
 
 
-    // ==========================================
-    // THE 'SPACEBAR': Shooting (With Chip Upgrade!)
-    // ==========================================
+    // --- 4. Contextual Action: Shoot (Offense) / Tackle (Defense) ---
     if (shootKey && actionCooldown <= 0.f) {
-        actionCooldown = 0.6f; // Slight cooldown so they can't machine-gun shots
+        actionCooldown = 0.6f; // Longer cooldown for heavy actions
 
         if (owner->getPossession()) {
-            // Determine aiming direction based on current WASD movement input,
-            // or fallback to the direction the player is currently facing if standing still
             sf::Vector2f shotDir = moveDir;
             if (shotDir.x == 0.f && shotDir.y == 0.f) {
                 shotDir.x = owner->getFacingDirection();
@@ -194,27 +151,22 @@ void HumanController::update(float dt) {
                 shotDir.y /= length;
             }
 
-            // 1. CHECK FOR CHIP MODIFIER
             bool isChip = modKey;
 
-            // 2. ADJUST TRAJECTORY
-            // A chipped shot drops forward power to scoop the ball way up into the sky!
+            // A chipped shot sacrifices forward velocity to scoop the ball high over the players
             float shotSpeed   = isChip ? 420.f : 650.f;
             float launchHeight = isChip ? 280.f : 120.f;
 
-            // 3. FORCE LOOSE BALL (No intended receiver on a shot!)
+            // It's a loose ball
             if (targetBall) {
                 targetBall->setIntendedReceiver(nullptr);
             }
 
-            // 4. Unleash the Shot!
             owner->kickBall({shotDir.x * shotSpeed, shotDir.y * shotSpeed, launchHeight});
-
-            // Loose possession immediately
             owner->setPossession(false);
         }
         else {
-            // DEFENSE: TACKLING
+            // DEFENSE: Attempt to steal the ball from the enemy carrier
             Footballer* carrier = targetBall->getCarrier();
             if (carrier && carrier->getTeam() != owner->getTeam()) {
                 float dist = std::hypot(carrier->getPosition().x - owner->getPosition().x,
@@ -228,8 +180,12 @@ void HumanController::update(float dt) {
     }
 }
 
-// --- HELPER FUNCTIONS ---
+// --- AIM ASSIST HELPERS ---
 
+/**
+ * Evaluates all teammates and selects the best passing target based on the player's
+ * directional input. Uses vector math (Dot Product) to determine alignment.
+ */
 Footballer* HumanController::findBestPassTarget(sf::Vector2f aimDir) {
     Footballer* bestTarget = nullptr;
     float bestDotProduct = -1.f;
@@ -242,12 +198,13 @@ Footballer* HumanController::findBestPassTarget(sf::Vector2f aimDir) {
                 float dist = std::hypot(toMate.x, toMate.y);
 
                 if (dist > 10.f) {
-                    toMate.x /= dist; toMate.y /= dist; // Normalize
+                    toMate.x /= dist; toMate.y /= dist;// Normalize the vector pointing to the teammate
 
-                    // Dot product tells us how closely the aim direction matches the teammate's direction
+                    // The Dot Product returns a value between -1 and 1 indicating how parallel two vectors are.
+                    // 1.0 = Perfect alignment. We use this to find the teammate the player is most directly aiming at.
                     float dotProduct = (aimDir.x * toMate.x) + (aimDir.y * toMate.y);
 
-                    // Pick the teammate we are most directly aiming at
+                    // Threshold of 0.6 (~53 degrees) ensures we don't accidentally pass backward or blindly sideways
                     if (dotProduct > bestDotProduct && dotProduct > 0.6f) {
                         bestDotProduct = dotProduct;
                         bestTarget = teammate;

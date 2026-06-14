@@ -5,12 +5,24 @@
 #include <memory>
 #include "../Entities/GameObject.h"
 
+// Forward declarations
 class Footballer;
 class TeamManager;
 class Ball;
 
+/**
+ * @enum ControllerID
+ * @brief Differentiates between local players to map the correct hardware inputs.
+ */
 enum class ControllerID { Player1, Player2 };
 
+/**
+ * @class HumanController
+ * @brief Translates raw player inputs into in-game actions for a Footballer.
+ * Handles movement mapping, context-sensitive actions (passing vs. switching,
+ * shooting vs. tackling), and aiming assistance (dot-product targeting).
+ * Supports local multiplayer by querying different keybind configurations based on ID.
+ */
 class HumanController {
 private:
     Footballer* owner;
@@ -20,8 +32,10 @@ private:
 
     ControllerID id;
 
+    // Prevents the player from spamming inputs (like machine-gun shooting)
     float actionCooldown = 0.f;
 
+    // Aim Assist & Targeting
     Footballer* findBestPassTarget(sf::Vector2f aimDir);
     Footballer* findClosestTeammateToBall();
 
