@@ -1,25 +1,22 @@
 #include "CareerOverState.h"
-#include "../MenuState.h" // Go back to the very main menu!
+#include "../MenuState.h"
 #include "../../Career/LeagueSimulator.h"
 #include "../../Core/Game.h"
 #include "../../Core/Config.h"
 #include <iostream>
-#include <cstdio> // Required for std::remove
+#include <cstdio>
 
 CareerOverState::CareerOverState(Game* game, std::shared_ptr<CareerData> careerData)
     : GameState(game), career(careerData), titleText(font), resultText(font), headerText(font), exitText(font)
 {
     font.openFromFile("assets/font.ttf");
 
-    // 1. Sort the final standings just to be 100% sure!
     LeagueSimulator::sortStandings(career);
 
-    // 2. Setup UI
     titleText.setString("SEASON OVER");
     titleText.setCharacterSize(80);
     titleText.setPosition({100.f, 50.f});
 
-    // Check if the player won the league (Player ID is 0)
     if (career->leagueTable[0].id == 0) {
         titleText.setFillColor(sf::Color::Green);
         resultText.setString("YOU ARE THE STREET CHAMPIONS!");

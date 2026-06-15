@@ -4,6 +4,14 @@
 #include <memory>
 #include "../Entities/GameObject.h"
 
+/**
+ * @class HUD
+ * @brief Manages the Heads-Up Display (UI Overlay) during a match.
+ * Responsible for rendering global match data (Score and Time) as well as
+ * entity-specific data (Stamina bars and Human-Controller indicator arrows).
+ * It sits at the absolute top of the Z-order so it is never obscured by players or weather.
+ */
+
 class HUD {
 private:
     sf::Font font;

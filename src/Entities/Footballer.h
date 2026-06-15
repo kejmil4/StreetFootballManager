@@ -11,15 +11,22 @@
 class AIBrain;
 class HumanController;
 
-
+/**
+ * @class Footballer
+ * @brief The core actor in the game world.
+ * Acts as a centralized container that binds together the physical body (Entity base class),
+ * the visual representation (FootballerAnimator), and the decision-making brain
+ * (either AIBrain or HumanController).
+ */
 class Footballer : public Entity {
 private:
     bool isHuman;
 
-
+    // --- Components ---
     std::unique_ptr<AIBrain> brain;
     std::unique_ptr<FootballerAnimator> animator;
     std::unique_ptr<HumanController> humanInput;
+
     Ball* targetBall;
     const std::vector<std::unique_ptr<GameObject>>* environment;
 
@@ -35,7 +42,7 @@ private:
 
 public:
     Footballer(float x, float y, const EntityStats& baseStats, Ball* ball, Team teamAlignment, const std::vector<std::unique_ptr<GameObject>>* env, bool startsAsHuman);
-    ~Footballer() override; // Need explicit destructor for unique_ptr
+    ~Footballer() override; // Explicit destructor required for unique_ptr forward declarations
 
     void update(float dt) override;
 

@@ -6,6 +6,14 @@
 #include <string>
 #include <vector>
 
+/**
+ * @class CareerSetupState
+ * @brief The "New Campaign Wizard" screen.
+ * Guides the user through creating a new team, capturing custom text input for
+ * the team name, and selecting starting parameters (Home Pitch, Logo, Playstyle).
+ * Once completed, it generates the initial CareerData payload and boots the simulator.
+ */
+
 class CareerSetupState : public GameState {
 private:
     std::shared_ptr<CareerData> career;

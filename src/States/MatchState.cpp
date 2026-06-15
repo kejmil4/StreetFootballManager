@@ -12,12 +12,12 @@
 #include <iostream>
 
 MatchState::MatchState(Game* game, const MatchSettings& matchSettings) : GameState(game), settings(matchSettings) {
+    // ---  Sub-System Initialization ---
     referee = std::make_unique<Referee>(game, static_cast<float>(settings.matchLengthSeconds));
     teamManager = std::make_unique<TeamManager>();
 
     pauseMenu = std::make_unique<PauseMenu>();
 
-    // 3. Spawn the Pitch and Ball
     gameObjects.push_back(std::make_unique<Pitch>(settings.pitch, settings.logoId));
     envManager = std::make_unique<EnvironmentManager>(settings.pitch, settings.weather);
 
@@ -25,6 +25,8 @@ MatchState::MatchState(Game* game, const MatchSettings& matchSettings) : GameSta
     matchBall = ballPtr.get();
 
     gameObjects.push_back(std::move(ballPtr));
+
+    // --- Roster Generation ---
 
     spawnTeams();
 
@@ -38,6 +40,7 @@ void MatchState::update(float dt) {
         return;
     }
     if (referee->updateClock(dt)) {
+        // --- CAREER MODE INJECTION ---
         if (settings.careerSave != nullptr) {
             game->changeState(std::make_unique<PostMatchState>(
                 game,
@@ -58,18 +61,18 @@ void MatchState::update(float dt) {
     }
     matchHUD.updateTimer(referee->getTimeRemaining());
 
-    // 2. Update all Game Objects (The Brains and Humans think for themselves now)
+    // Update all Game Objects
     for (auto& obj : gameObjects) {
         obj->update(dt);
     }
 
-    // 3. The Referee checks for Goals and Out of Bounds
+    // The Referee checks for Goals and Out of Bounds
     if (referee->checkGoals(matchBall)) {
         matchHUD.updateScore(referee->getHomeScore(), referee->getAwayScore());
         referee->resetPitch(gameObjects, matchBall);
     }
 
-    // 4. The TeamManager checks if the human just passed the ball or lost it
+    //  The TeamManager checks if the human just passed the ball or lost it
     teamManager->update(matchBall, gameObjects);
     envManager->update(dt);
 }
@@ -105,7 +108,6 @@ void MatchState::handleInput(const sf::Event& event) {
     }
     if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>()) {
 
-        // Now you access the code directly from the pointer
         if (keyPressed->code == sf::Keyboard::Key::Escape) {
             isPaused = !isPaused;
         }

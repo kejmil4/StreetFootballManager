@@ -5,6 +5,15 @@
 #include <SFML/Graphics/Font.hpp>
 #include <memory>
 
+
+/**
+ * @class PostMatchState
+ * @brief The post-match resolution screen specifically designed for Career Mode.
+ * While visually similar to the standard GameOverState, this class performs
+ * heavy mechanical lifting. It calculates RPG economy rewards (Street Cred),
+ * injects match stats into the database, simulates background AI matches for
+ * the rest of the league, and triggers the file save system.
+ */
 class PostMatchState : public GameState {
 private:
     std::shared_ptr<CareerData> career;

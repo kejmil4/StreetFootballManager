@@ -3,9 +3,16 @@
 #include <iostream>
 
 FootballerAnimator::FootballerAnimator(sf::Sprite& targetSprite, Team teamAlignment) {
-    // 1. Setup Colors Based on Team
-    sf::Color jersey, shorts, hair;
-    hair = sf::Color(220, 180, 90); // Blonde hair
+    std::vector<sf::Color> hairPalette = {
+        sf::Color(220, 180, 90),  // Classic Blonde
+        sf::Color(180, 130, 60),  // Dirty Blonde / Light Brown
+        sf::Color(139, 69, 19),   // Medium Brown
+        sf::Color(101, 67, 33),   // Dark Brown
+        sf::Color(205, 133, 63)   // Sandy / Auburn
+    };
+
+    sf::Color hair = hairPalette[rand() % hairPalette.size()];
+    sf::Color jersey, shorts;
 
     if (teamAlignment == Team::Home) {
         jersey = sf::Color::White;
@@ -15,10 +22,10 @@ FootballerAnimator::FootballerAnimator(sf::Sprite& targetSprite, Team teamAlignm
         shorts = sf::Color::Black;
     }
 
-    // 2. Load and Palette Swap the Texture
+    // Load and Palette Swap the Texture
     this->texture = loadCustomKit("assets/footballer4frames.png", jersey, shorts, hair);
 
-    // 3. Apply to the Entity's Sprite
+    // Apply to the Entity's Sprite
     targetSprite.setTexture(this->texture);
     targetSprite.setTextureRect({{0, 0}, {32, 32}});
     targetSprite.setOrigin({16.f, 16.f});
@@ -30,6 +37,8 @@ sf::Texture FootballerAnimator::loadCustomKit(const std::string& filepath, sf::C
         std::cerr << "Failed to load player sprite sheet!\n";
     }
 
+    // --- CPU Palette Swapping Algorithm ---
+    // Iterate through every single pixel of the loaded image.
     for (unsigned int y = 0; y < image.getSize().y; ++y) {
         for (unsigned int x = 0; x < image.getSize().x; ++x) {
             sf::Color pixelColor = image.getPixel({x, y});

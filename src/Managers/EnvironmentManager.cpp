@@ -7,18 +7,20 @@ EnvironmentManager::EnvironmentManager(PitchType pitch, WeatherType weather)
 {
     calculateModifiers();
 
-    // Set particle spawn rates based on weather
+    /// Establish how frequently new particles are injected into the scene.
+    // Lower rate = faster spawning = denser weather.
     if (currentWeather == WeatherType::Rain) {
-        particleSpawnRate = 0.005f; // Lots of rain!
+        particleSpawnRate = 0.005f; // rain
     } else if (currentWeather == WeatherType::Snow) {
-        particleSpawnRate = 0.02f;  // Slower, thicker snow
+        particleSpawnRate = 0.02f;  // snow
     } else {
-        particleSpawnRate = 999.f;  // Clear weather, no particles
+        particleSpawnRate = 999.f;  // clear
     }
 }
 
 void EnvironmentManager::calculateModifiers() {
-    // 1. BASE PITCH MODIFIERS
+    // --- Phase 1: Base Pitch Modifiers ---
+    // Establish the baseline physics of the playing surface.
     switch (currentPitch) {
         case PitchType::Grass:
             frictionMultiplier = 1.0f;
@@ -27,20 +29,21 @@ void EnvironmentManager::calculateModifiers() {
             speedMultiplier = 1.0f;
             break;
         case PitchType::Asphalt:
-            frictionMultiplier = 0.8f; // Less friction, ball rolls further
-            bounceMultiplier = 1.3f;   // Hard surface, higher bounce
-            staminaDrainMultiplier = 0.9f; // Easy to run on
-            speedMultiplier = 1.1f;    // Players run slightly faster
+            frictionMultiplier = 0.8f;     // Smooth surface: ball rolls further
+            bounceMultiplier = 1.3f;       // Hard surface: higher ball bounces
+            staminaDrainMultiplier = 0.9f; // Solid footing: players exhaust slower
+            speedMultiplier = 1.1f;        // Solid footing: players run slightly faster
             break;
         case PitchType::Mud:
-            frictionMultiplier = 1.6f; // High friction, ball gets stuck
-            bounceMultiplier = 0.3f;   // Mud absorbs the bounce
-            staminaDrainMultiplier = 1.5f; // Exhausting to run through
-            speedMultiplier = 0.8f;    // Players are slowed down
+            frictionMultiplier = 1.5f;     // Sticky surface: ball stops quickly
+            bounceMultiplier = 0.5f;       // Soft surface: kills ball bounces
+            staminaDrainMultiplier = 1.4f; // Difficult footing: players exhaust quickly
+            speedMultiplier = 0.8f;        // Difficult footing: players move slower
             break;
     }
 
-    // 2. STACK WEATHER EFFECTS ON TOP
+    // --- Phase 2: Weather Overrides ---
+    // Stack weather conditions on top of the base pitch conditions.
     switch (currentWeather) {
         case WeatherType::Clear:
             break; // No changes
@@ -60,7 +63,7 @@ void EnvironmentManager::calculateModifiers() {
 
 void EnvironmentManager::spawnParticle() {
     WeatherParticle p;
-    // Spawn randomly across the top (and a bit off-screen to the right for wind)
+    // Spawn particles anywhere across the top of the screen
     float startX = static_cast<float>(rand() % (Config::WINDOW_WIDTH + 400)) - 200.f;
     p.position = {startX, -50.f};
 
@@ -68,7 +71,7 @@ void EnvironmentManager::spawnParticle() {
         p.velocity = {-200.f, 600.f}; // Rains falls fast and slightly left (wind)
         p.shape.setSize({2.f, 15.f});
         p.shape.setFillColor(sf::Color(150, 150, 255, 150)); // Semi-transparent blue
-        p.shape.setRotation(sf::degrees(0.f)); // Optional: angle it to match velocity if desired
+        p.shape.setRotation(sf::degrees(0.f));
     }
     else if (currentWeather == WeatherType::Snow) {
         // Random drift for snow

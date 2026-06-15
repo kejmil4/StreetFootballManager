@@ -4,6 +4,12 @@
 #include <vector>
 #include <string>
 
+/**
+ * @class CareerMenuState
+ * @brief The primary gateway menu for the single-player campaign module.
+ * Routes the user to start a new campaign, browse existing save files,
+ * or quick-resume their most recently played career.
+ */
 class CareerMenuState : public GameState {
 private:
     sf::Font font;

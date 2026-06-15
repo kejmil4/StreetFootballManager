@@ -14,10 +14,17 @@
 class EnvironmentManager;
 class CareerData;
 
+// --- Global Match Configuration Enums ---
 enum class PitchType { Grass, Asphalt, Mud };
 enum class WeatherType { Clear, Rain, Snow };
 enum class Difficulty { Easy, Medium, Hard };
 
+/**
+ * @struct MatchSettings
+ * @brief A data payload used to configure a match before it boots up.
+ * This allows both the Custom Match and the Career Mode
+ * to use the exact same MatchState, just by passing in different settings.
+ */
 struct MatchSettings {
     int teamSize = 3;
     int homeHumans = 1;
@@ -35,6 +42,12 @@ struct MatchSettings {
     int logoId = -1;
 };
 
+/**
+ * @class MatchState
+ * @brief The core simulation loop of the game.
+ * Manages the active roster of GameObjects, routes input to the Pause Menu,
+ * and ticks the sub-managers (Referee, Environment, Teams) every frame.
+ */
 class MatchState : public GameState {
 private:
     MatchSettings settings;
@@ -47,9 +60,15 @@ private:
 
     std::unique_ptr<EnvironmentManager> envManager;
 
+    // --- Match Flow Control ---
     std::unique_ptr<PauseMenu> pauseMenu;
 
     bool isPaused = false;
+
+    /**
+     * @brief Parses the MatchSettings and constructs the physical Footballer entities,
+     * assigning them to the correct sides and injecting their proper RPG stats.
+     */
     void spawnTeams();
 
 public:

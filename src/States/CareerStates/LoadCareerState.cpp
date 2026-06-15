@@ -22,14 +22,11 @@ LoadCareerState::LoadCareerState(Game* game) : GameState(game), selectedIndex(0)
     float scaleY = static_cast<float>(Config::WINDOW_HEIGHT) / textureSize.y;
     bgSprite.setScale({scaleX, scaleY});
 
-    // 1. Scan the Saves folder and populate our list!
     if (std::filesystem::exists("Saves") && std::filesystem::is_directory("Saves")) {
         for (const auto& entry : std::filesystem::directory_iterator("Saves")) {
             if (entry.path().extension() == ".txt") {
-                // Store the actual path (e.g., "Saves/Vipers.txt")
                 filePaths.push_back(entry.path().string());
 
-                // Create the UI text using just the file name (e.g., "Vipers")
                 sf::Text text(font);
                 text.setString(entry.path().stem().string());
                 text.setCharacterSize(40);
@@ -38,7 +35,6 @@ LoadCareerState::LoadCareerState(Game* game) : GameState(game), selectedIndex(0)
         }
     }
 
-    // 2. Add the Back Button at the very end
     sf::Text backBtn(font);
     backBtn.setString("Back");
     backBtn.setCharacterSize(30);

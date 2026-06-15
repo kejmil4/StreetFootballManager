@@ -1,5 +1,5 @@
 #include "Footballer.h"
-#include "../AI/AIBrain.h" // Include the brain so we can use it!
+#include "../AI/AIBrain.h"
 #include "../Core/Config.h"
 #include <SFML/Window/Keyboard.hpp>
 #include "../Visuals/FootballerAnimator.h"
@@ -7,22 +7,20 @@
 #include <cmath>
 #include <iostream>
 
-// ==========================================
-// FOOTBALLER LOGIC
-// ==========================================
-
 Footballer::Footballer(float x, float y, const EntityStats& baseStats, Ball* ball, Team teamAlignment, const std::vector<std::unique_ptr<GameObject>>* env, bool startsAsHuman)
     : Entity(x, y, baseStats), targetBall(ball), environment(env), isHuman(startsAsHuman), targetPos(x, y), startPosition(x, y) {
 
     setTeam(teamAlignment);
 
+    // Initialize all potential components. The update loop will decide which ones to actively tick.
     brain = std::make_unique<AIBrain>(this, targetBall, environment);
     humanInput = std::make_unique<HumanController>(this, environment, targetBall);
-
     animator = std::make_unique<FootballerAnimator>(sprite, teamAlignment);
 }
 
 Footballer::~Footballer() = default;
+
+// --- Control State Machine ---
 
 void Footballer::makeHuman(ControllerID id) {
     isHuman = true;
@@ -32,6 +30,8 @@ void Footballer::makeHuman(ControllerID id) {
 
 void Footballer::makeAI() {
     isHuman = false;
+    // Reset velocities so an AI doesn't inherit a running sprint from a human who just switched away
+    velocity = {0.f, 0.f};
 }
 
 void Footballer::kickBall(sf::Vector3f power) {
@@ -42,6 +42,8 @@ void Footballer::kickBall(sf::Vector3f power) {
         possessionCooldown = 0.3f;
     }
 }
+
+// --- Main Update Loop ---
 
 void Footballer::update(float dt) {
     updateCooldowns(dt);
@@ -55,9 +57,7 @@ void Footballer::update(float dt) {
 
     velocity = {0.f, 0.f};
 
-    // ==========================================
-    // 1. INPUT & DECISION MAKING
-    // ==========================================
+    // --- Phase 1: Decision Making ---
     if (isHuman) {
         humanInput->update(dt);
     }
@@ -73,10 +73,7 @@ void Footballer::update(float dt) {
             velocity.y = (dy / distance) * stats.speed;
         }
 
-        // ==========================================
-        // 2. SEPARATION FLOCKING
-        // ==========================================
-        // Don't apply flocking if this player is the main actor (Chasing, Pressing, or has ball)
+        // --- Phase 2: Flocking (Separation) ---
         bool ignoreFlocking = false;
         AIBrainState state = brain->getCurrentState();
         if (state == AIBrainState::Loose_Chasing || state == AIBrainState::Defending_Pressing || state == AIBrainState::Attacking_OnBall) {
@@ -105,17 +102,12 @@ void Footballer::update(float dt) {
         }
     }
 
-    // ==========================================
-    // 3. EXECUTE VISUALS & PHYSICS
-    // ==========================================
+    // --- Phase 3. Animation ---
     animator->update(dt, velocity, sprite, getTeam(), isHuman);
     applyMovement(dt);
 
 
-    // ==========================================
-    // 4. BALL COLLISION & POSSESSION
-    // ==========================================
-
+    // --- Ball collision and possession ---
     if (targetBall && targetBall->getCarrier() == nullptr && possessionCooldown <= 0.f) {
         if (targetBall->isGrounded()) {
 
@@ -137,30 +129,26 @@ void Footballer::update(float dt) {
                 }
             }
 
-            // Perform the touch check using our dynamic radius
             if (distToBall < currentPickupRadius) {
                 this->setPossession(true);
                 targetBall->setCarrier(this);
 
-                // The pass has been successfully caught or intercepted! Clear the intention.
                 targetBall->setIntendedReceiver(nullptr);
             }
         }
     }
 
-    // If I own the ball, I must drag it with me!
     if (getPossession()) {
 
-        // 1. Ask the Animator exactly which way the sprite is currently drawn!
         float currentFaceDir = getFacingDirection();
 
-        // 2. The Dribble Math
+        //  The Dribble Math
         sf::Vector2f dribblePos = position;
 
         float offsetX = (currentFaceDir == 1.f) ? 25.f : 0.f;
 
         dribblePos.x += (currentFaceDir * offsetX);
-        dribblePos.y += 55.f; // Push down to the feet
+        dribblePos.y += 55.f; // Push down to the feet of the player
 
         targetBall->snapToPlayer(dribblePos);
     }
@@ -213,24 +201,22 @@ void Footballer::setInputCooldown(float time) {
 }
 
 void Footballer::resetToKickoff() {
-    // 1. Physically move them to their starting spot
+    // Physically move players to their starting spot and reset all values
     position = startPosition;
     sprite.setPosition(position);
 
-    // 2. WIPE THE AI MEMORY!
     targetPos = startPosition;
 
-    // 3. Clear all physics and cooldowns
     velocity = {0.f, 0.f};
     setPossession(false);
 
-    this->stunTimer = 0.f;          // Assuming stunTimer is accessible from Entity
-    this->tackleCooldown = 0.f;     // Clear tackle cooldowns
-    this->possessionCooldown = 0.f; // Clear pickup cooldowns
+    this->stunTimer = 0.f;
+    this->tackleCooldown = 0.f;
+    this->possessionCooldown = 0.f;
 
 }
 
 float Footballer::getFacingDirection() const {
     if (animator) return animator->getFacingDirection();
-    return 1.f; // Fallback just in case
+    return 1.f;
 }

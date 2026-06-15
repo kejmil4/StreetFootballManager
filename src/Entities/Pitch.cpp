@@ -6,8 +6,8 @@
 
 Pitch::Pitch(PitchType type, int logoId) : GameObject(0.f, 0.f), sprite(texture), hasLogo(false), logoSprite(logoTexture) {
 
+    // --- 1. Base Surface Setup ---
     std::string texturePath;
-
     switch (type) {
         case PitchType::Asphalt: texturePath = "assets/pitchAsphalt.png"; break;
         case PitchType::Mud:     texturePath = "assets/pitchMud.png"; break;
@@ -22,6 +22,7 @@ Pitch::Pitch(PitchType type, int logoId) : GameObject(0.f, 0.f), sprite(texture)
 
     sprite.setScale({4.f, 4.f});
 
+    // --- 2. Logo Setup & Centering ---
     if (logoId >= 0) {
         std::string logoPath;
         switch (logoId) {
@@ -51,10 +52,8 @@ Pitch::Pitch(PitchType type, int logoId) : GameObject(0.f, 0.f), sprite(texture)
             sf::FloatRect bounds = logoSprite.getLocalBounds();
             logoSprite.setOrigin({bounds.size.x / 2.f, bounds.size.y / 2.f});
 
-            // Put it dead center of the screen
             logoSprite.setPosition({Config::CENTER_X, Config::CENTER_Y - 415.f});
 
-            // Scale it up so it covers the center circle
             logoSprite.setScale({0.32f, 0.32f});
 
 

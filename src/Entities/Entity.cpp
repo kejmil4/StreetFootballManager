@@ -14,9 +14,10 @@ void Entity::render(sf::RenderTarget& target) {
 
 // Universal Movement: Applies velocity to position using delta time (dt)
 void Entity::applyMovement(float dt) {
-    // 1. --- STAMINA LOGIC ---
+    // --- Phase 1: Stamina Logic & Speed Scaling ---
     bool isMoving = (velocity.x != 0.f || velocity.y != 0.f);
 
+    // Drain stamina while moving, regenerate while idle
     if (isMoving) {
         currentStamina -= 1.f * dt;
         if (currentStamina < 0.f) currentStamina = 0.f;
@@ -25,17 +26,22 @@ void Entity::applyMovement(float dt) {
         if (currentStamina > stats.maxStamina) currentStamina = stats.maxStamina;
     }
 
-
+    // Calculate dynamic speed: As stamina drops, speed decreases.
+    // The formula guarantees a baseline speed of 50% even when completely exhausted,
+    // so players never feel completely "stuck" in mud.
     float staminaRatio = currentStamina / stats.maxStamina;
     float speedMultiplier = 0.5f + (0.5f * staminaRatio);
 
     sf::Vector2f actualVelocity = velocity * speedMultiplier;
 
-    // 2. --- ACTUAL MOVEMENT ---
+    // --- Phase 2: Positional Update ---
     position += actualVelocity * dt;
 
-    // --- INVISIBLE WALL
-    // X-Axis (Left and Right walls)
+    // --- Phase 3: Pitch Boundaries (Invisible Walls) ---
+    // Clamps the entity's position to prevent them from running off the playable screen.
+    // Hardcoded to the scaled pitch dimensions defined in Config.h.
+
+    // X-Axis (Left and Right pitch boundaries)
     if (position.x < Config::PITCH_LEFT_X) {
         position.x = Config::PITCH_LEFT_X;
     }
@@ -43,7 +49,7 @@ void Entity::applyMovement(float dt) {
         position.x = Config::PITCH_RIGHT_X;
     }
 
-    // Y-Axis (Top and Bottom walls)
+    // Y-Axis (Top and Bottom pitch boundaries)
     if (position.y < Config::PITCH_TOP_Y) {
         position.y = Config::PITCH_TOP_Y;
     }
@@ -51,9 +57,10 @@ void Entity::applyMovement(float dt) {
         position.y = Config::PITCH_BOTTOM_Y;
     }
 
+    // Sync the underlying graphical sprite to the new physics position
     sprite.setPosition(position);
 
-    // Reset base velocity for the next frame
+    // Reset base velocity for the next frame so inputs/AI must continuously provide intent
     velocity = {0.f, 0.f};
 }
 

@@ -7,7 +7,7 @@ Referee::Referee(Game* game, float duration) : game(game) , matchDuration(durati
 
 bool Referee::updateClock(float dt) {
     timeRemaining -= dt;
-    return timeRemaining <= 0.f; // Match is over!
+    return timeRemaining <= 0.f; // Match is over
 }
 
 bool Referee::checkGoals(Ball* matchBall) {
@@ -41,6 +41,9 @@ void Referee::resetPitch(std::vector<std::unique_ptr<GameObject>>& gameObjects, 
     }
 
     for (auto& obj : gameObjects) {
+        // Use of dynamic_cast here to filter the generic GameObject list.
+        // We only want to trigger resets on Footballers (wiping their AI memory and stamina).
+        // Static objects like the Pitch or ambient environment markers are safely ignored.
         if (auto player = dynamic_cast<Footballer*>(obj.get())) {
 
             player->resetToKickoff();

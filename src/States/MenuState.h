@@ -5,6 +5,11 @@
 #include <vector>
 #include <string>
 
+/**
+ * @enum MenuScreen
+ * @brief Represents the various sub-menus within the main menu hierarchy.
+ */
+
 enum class MenuScreen {
     Main,
     CustomMatch,
@@ -13,11 +18,22 @@ enum class MenuScreen {
     Settings
 };
 
+/**
+ * @enum MatchType
+ * @brief Defines the core mode of the upcoming match.
+ */
 enum class MatchType {
     Solo,
     LocalMultiplayer
 };
 
+/**
+ * @class MenuState
+ * @brief Handles main menu navigation, match configuration, and state transitions.
+ * Implements a simple vertical-list menu system using SFML Text.
+ * Allows users to tweak match parameters (like pitch and weather) before
+ * constructing and launching a new MatchState.
+ */
 class MenuState : public GameState {
 private:
     MenuScreen currentScreen;
@@ -36,8 +52,17 @@ private:
     int optDiff = 1;    // 0=Easy, 1=Medium, 2=Hard
     int optTime = 1;    // 0=1min, 1=3min, 2=5min, 3=10min
 
+    /**
+     * @brief Visually updates the setup screen text to reflect the current configuration.
+     * Called whenever the user cycles left/right on an option.
+     */
     void refreshSetupText();
 
+    /**
+     * @brief Transitions the UI to a new sub-menu.
+     * Clears the current text options and dynamically populates the screen
+     * based on the requested MenuScreen.
+     */
     void loadScreen(MenuScreen screen);
 
 public:

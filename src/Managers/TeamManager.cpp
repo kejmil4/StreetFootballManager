@@ -2,7 +2,7 @@
 
 void TeamManager::initializeHuman(Footballer* newHuman, ControllerID id) {
     if (!newHuman) return;
-    newHuman->makeHuman(id); // We will update Footballer next to accept this!
+    newHuman->makeHuman(id);
 
     if (id == ControllerID::Player1) player1 = newHuman;
     else player2 = newHuman;
@@ -13,16 +13,20 @@ void TeamManager::switchHumanControl(Footballer* newHuman, ControllerID id) {
 
     if (!newHuman || newHuman == currentActive) return;
 
-    // 1. Turn the old player back into an AI bot
+    // --- Step 1: Relinquish Control ---
+    // Turn the previously controlled player back over to the AIBrain
     if (currentActive) {
         currentActive->makeAI();
     }
 
-    // 2. Grant human control to the new player
+    // --- Step 2: Grant Control ---
     if (id == ControllerID::Player1) player1 = newHuman;
     else player2 = newHuman;
 
     newHuman->makeHuman(id);
+
+    // Apply a brief input freeze to the new player. This prevents the user from
+    // accidentally shooting/passing if they were mashing the button to request the switch.
     newHuman->setInputCooldown(0.5f);
 }
 
@@ -32,6 +36,7 @@ void TeamManager::update(Ball* matchBall, const std::vector<std::unique_ptr<Game
     Footballer* currentCarrier = matchBall->getCarrier();
     if (!currentCarrier) return; // Only auto-switch if someone actually has the ball!
 
+    // --- Auto-Switch Logic for Player 1 ---
     if (player1) {
         // If a teammate of Player 1 catches the ball, and Player 1 isn't already controlling them...
         if (currentCarrier->getTeam() == player1->getTeam() && currentCarrier != player1) {

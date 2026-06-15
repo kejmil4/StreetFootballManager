@@ -5,6 +5,13 @@
 #include <memory>
 #include <vector>
 
+/**
+ * @class CareerOverState
+ * @brief The final summary screen at the conclusion of a campaign.
+ * Displays the definitive league table, crowns the champion, and actively
+ * deletes the save file from the hard drive to enforce a single-season structure.
+ */
+
 class CareerOverState : public GameState {
 private:
     std::shared_ptr<CareerData> career;

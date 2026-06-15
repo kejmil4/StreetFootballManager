@@ -4,6 +4,14 @@
 #include <vector>
 #include <string>
 
+/**
+ * @class SettingsState
+ * @brief Interactive UI screen for configuring local multiplayer keybindings.
+ * Uses a 2D grid navigation system (Rows = Actions, Columns = Players).
+ * To elegantly apply changes, it maps the UI grid directly to the memory addresses
+ * of the global Config variables, allowing seamless key remapping.
+ */
+
 class SettingsState : public GameState {
 private:
     sf::Font font;
@@ -25,12 +33,22 @@ private:
     int selectedCol; // 0 for Player 1, 1 for Player 2
     bool isBinding;
 
-    // Architecture Pointers linked to Config.h
+    // --- Architecture: The Memory Map ---
+    // An array of pointers pointing directly to the global Config::p1Binds and p2Binds.
+    // This allows us to dynamically overwrite variables without massive switch statements.
     sf::Keyboard::Key* bindPointers[14];
     std::string actionNames[7];
 
+    /**
+     * @brief Syncs the UI text with the current internal configuration state
+     * and applies highlighting (Yellow for selected, Red for actively binding).
+     */
     void refreshUI();
-    std::string keyToStr(sf::Keyboard::Key key); // Safe string conversion helper
+
+    /**
+     * @brief Translates abstract SFML key enums into human-readable strings.
+     */
+    std::string keyToStr(sf::Keyboard::Key key);
 
     sf::Texture bgTexture;
     sf::Sprite bgSprite;

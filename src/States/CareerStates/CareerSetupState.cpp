@@ -71,7 +71,7 @@ void CareerSetupState::handleInput(const sf::Event& event) {
                 playerNameString += static_cast<char>(textEvent->unicode);
             }
             refreshUI();
-            return; // Don't process arrow keys while typing
+            return;
         }
     }
 

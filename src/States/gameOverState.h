@@ -3,6 +3,12 @@
 #include "MatchState.h"
 #include <SFML/Graphics.hpp>
 
+/**
+ * @class GameOverState
+ * @brief The post-match summary screen for standard Exhibition games.
+ * Displays the final scoreline, calculates the winner, and waits for user input
+ * to return to the main menu.
+ */
 class GameOverState : public GameState {
 private:
     sf::Font font;

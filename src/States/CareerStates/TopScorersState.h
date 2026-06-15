@@ -5,6 +5,14 @@
 #include <memory>
 #include <vector>
 
+/**
+ * @class TopScorersState
+ * @brief The Golden Boot leaderboard screen for Career Mode.
+ * Displays the top goalscorers across the entire league. This class handles
+ * the UI presentation, while delegating the complex sorting and data aggregation
+ * to the LeagueSimulator.
+ */
+
 class TopScorersState : public GameState {
 private:
     std::shared_ptr<CareerData> career;

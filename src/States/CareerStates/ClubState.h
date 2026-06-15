@@ -5,6 +5,14 @@
 #include <memory>
 #include <vector>
 
+/**
+ * @class ClubState
+ * @brief The Roster Management screen.
+ * Allows the user to view their current squad, check player attributes,
+ * and actively toggle players between the Starting Lineup and the Bench.
+ * Enforces the strict 3-man street football roster limit.
+ */
+
 class ClubState : public GameState {
 private:
     std::shared_ptr<CareerData> career;

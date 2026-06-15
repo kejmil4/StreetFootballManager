@@ -5,6 +5,14 @@
 #include <memory>
 #include <vector>
 
+/**
+ * @class StandingsState
+ * @brief The League Table leaderboard screen.
+ * Displays the current rankings of all teams in the campaign, updating dynamically
+ * as the season progresses. Assumes that the CareerData's league table has
+ * already been mathematically sorted prior to loading this screen.
+ */
+
 class StandingsState : public GameState {
 private:
     std::shared_ptr<CareerData> career;

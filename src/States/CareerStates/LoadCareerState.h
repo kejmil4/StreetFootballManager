@@ -4,6 +4,14 @@
 #include <vector>
 #include <string>
 
+/**
+ * @class LoadCareerState
+ * @brief The Save File Browser screen.
+ * Dynamically scans the local "Saves" directory using modern C++17 filesystem logic.
+ * It maps human-readable UI text to the actual system file paths, allowing the user
+ * to easily resume any previously saved campaign.
+ */
+
 class LoadCareerState : public GameState {
 private:
     sf::Font font;

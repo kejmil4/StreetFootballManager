@@ -13,11 +13,8 @@ MenuState::MenuState(Game* game) : GameState(game), titleText(menuFont), bgSprit
         std::cerr << "FAILED TO LOAD: assets/font.ttf for Menu!\n";
     }
 
-    // Initialize the Title Text styling
     titleText.setCharacterSize(80);
     titleText.setFillColor(sf::Color::Yellow);
-
-    // Boot up the first screen!
     loadScreen(MenuScreen::Main);
 }
 
@@ -183,7 +180,7 @@ void MenuState::handleInput(const sf::Event& event) {
                 if (selectedIndex == 1) game->changeState(std::make_unique<AudioSettingsState>(game));
                 if (selectedIndex == 2) loadScreen(MenuScreen::Main);
             }
-            // 5. MATCH SETUP (LAUNCH!)
+            // 5. MATCH SETUP
             // --- MATCH SETUP SCREEN ---
             else if (currentScreen == MenuScreen::MatchSetup) {
 

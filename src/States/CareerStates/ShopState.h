@@ -5,6 +5,13 @@
 #include <memory>
 #include <vector>
 
+/**
+ * @class ShopState
+ * @brief The campaign's economic hub.
+ * Allows the player to spend their earned Street Cred to recruit new procedural
+ * players. Handles roster size validation, transaction logic, and the random
+ * generation of available free agents.
+ */
 class ShopState : public GameState {
 private:
     std::shared_ptr<CareerData> career;
@@ -24,7 +31,16 @@ private:
 
     int selectedIndex;
 
+    /**
+     * @brief Procedurally generates a batch of free agents with randomized
+     * stats, names, and mathematically calculated costs.
+     */
     void generateRecruits();
+
+    /**
+     * @brief Syncs the on-screen UI text to reflect changes in bank balance,
+     * roster size, or the removal of a purchased recruit.
+     */
     void refreshUI();
 
 public:

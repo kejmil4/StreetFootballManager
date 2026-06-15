@@ -2,9 +2,12 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 
-// Assuming Team is defined in Entity.h
 enum class Team;
 
+/**
+ * @struct AnimationState
+ * @brief Tracks the timing and framing of a 2D sprite sheet.
+ */
 struct AnimationState {
     int row = 0;
     int frameCount = 4;
@@ -13,13 +16,23 @@ struct AnimationState {
     float timer = 0.f;
 };
 
+/**
+ * @class FootballerAnimator
+ * @brief Handles all visual rendering logic for the Footballer entities.
+ * Includes a procedural animation ticker and a custom CPU-level palette swapper
+ * that dynamically colors jerseys, shorts, and hair based on team alignment.
+ */
+
 class FootballerAnimator {
 private:
     sf::Texture texture;
     AnimationState anim;
     float facingDirection = 1.f;
 
-    // The palette swapper is now a private method of the animator!
+    /**
+      * @brief Reads the raw pixel data of the sprite sheet and replaces specific
+      * "magic" colors (Red, Blue, Magenta) with the requested dynamic colors.
+      */
     sf::Texture loadCustomKit(const std::string& filepath, sf::Color jerseyColor, sf::Color shortsColor, sf::Color hairColor);
 
 public:
@@ -27,7 +40,9 @@ public:
     FootballerAnimator(sf::Sprite& targetSprite, Team teamAlignment);
     ~FootballerAnimator() = default;
 
-    // Called every frame to update frames and flipping
+    /**
+      * @brief Ticks the animation timer based on physical velocity and flips the sprite horizontally.
+      */
     void update(float dt, sf::Vector2f velocity, sf::Sprite& targetSprite, Team teamAlignment, bool isHuman);
 
     float getFacingDirection() const { return facingDirection; }

@@ -29,13 +29,14 @@ void AudioManager::playSound(const std::string& name) {
     }
 }
 
-// --- START THE PLAYLIST ---
+// --- MUSIC PLAYLIST SYSTEM ---
 void AudioManager::playPlaylist(const std::vector<std::string>& filepaths, bool shuffle) {
     if (filepaths.empty()) return;
 
     playlist = filepaths;
     currentTrackIndex = 0;
 
+    // Standard modern C++ approach to shuffling a container
     if (shuffle) {
         std::random_device rd;
         std::mt19937 g(rd());
@@ -62,6 +63,9 @@ void AudioManager::updateVolumes() {
 }
 
 void AudioManager::update() {
+    // 1. Garbage Collection: Remove any SFX that have finished playing.
+    // This is critical to prevent the activeSounds list from growing infinitely
+    // and causing a memory leak over the lifespan of the game.
     activeSounds.remove_if([](const sf::Sound& s) {
         return s.getStatus() == sf::Sound::Status::Stopped;
     });

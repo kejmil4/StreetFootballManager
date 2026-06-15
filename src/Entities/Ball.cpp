@@ -39,20 +39,21 @@ void Ball::update(float dt) {
     // Apply gravity to the Z velocity (falling)
     velocity3D.z -= gravity * dt;
 
-    // Move the ball in 3D space
+    // 2. Move the ball in 3D space based on its current velocity
     position3D += velocity3D * dt;
 
-    // Ground Collision Logic (Bouncing & Rolling)
+    // 3. Ground Collision Logic (Bouncing & Rolling)
     if (position3D.z <= 0.f) {
-        position3D.z = 0.f; // Snap to ground
+        position3D.z = 0.f; // Snap to the ground to prevent falling through the pitch
 
-        // If falling fast enough, bounce!
+        // If falling fast enough, execute a bounce
         if (velocity3D.z < -50.f) {
-            velocity3D.z = -velocity3D.z * bounceFactor;
+            velocity3D.z = -velocity3D.z * bounceFactor; // Reverse direction and bleed momentum
         } else {
             velocity3D.z = 0.f; // Stop micro-bouncing
         }
 
+        // Once grounded, apply friction to slowly roll to a halt
         velocity3D.x *= friction;
         velocity3D.y *= friction;
 
@@ -64,11 +65,10 @@ void Ball::update(float dt) {
         if (std::abs(velocity3D.y) < 5.f) velocity3D.y = 0.f;
     }
 
-    // --- NEW BOUNDARY LOGIC ---
     float leftWall = Config::PITCH_LEFT_X;
     float rightWall = Config::PITCH_RIGHT_X;
 
-    // If the ball is vertically between the goal posts, open the physical walls!
+    // If the ball is vertically between the goal posts, open the physical walls
     bool inGoalY = (position3D.y > Config::GOAL_TOP_Y && position3D.y < Config::GOAL_BOTTOM_Y);
     if (inGoalY) {
         leftWall = 10.f;  // The back of the left net
@@ -149,7 +149,7 @@ Footballer* Ball::getCarrier() const {
 
 Team Ball::getPossessionTeam() const {
     if (carrier) {
-        return carrier->getTeam(); // Ask the carrier which team they are on
+        return carrier->getTeam();
     }
-    return Team::None; // No carrier? It's a loose ball!
+    return Team::None;
 }
